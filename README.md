@@ -10,12 +10,16 @@ https://youtu.be/uO2OdnL22Sk
 https://max-everyday.com/2022/09/inline-bot/
 
 # How to execute source code (透過原始碼的執行方法)
-1: install latest version python.
+1: install latest version python:
 
-2: install dependency packages
+https://www.python.org/downloads/
+
+2: install dependency packages:
+
 <code>python3 -m pip install selenium</code>
 
-3: run config interface.
+3: run config interface:
+
 <code>python3 settings.py</code>
 
 
