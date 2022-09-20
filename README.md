@@ -2,10 +2,10 @@
 inline 填表單機器人, help you quickly fill your order form online
 
 # Demo (示範影片)
-...
+https://youtu.be/uO2OdnL22Sk
 
 # How to use (如何使用)
-...
+https://max-everyday.com/2022/09/inline-bot/
 
 # How to execute source code (透過原始碼的執行方法)
 1: install latest version python.
