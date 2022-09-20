@@ -1,5 +1,5 @@
 # inline_bot
-inline 填表單小工具, help you quickly fill your order form online
+inline 填表單機器人, help you quickly fill your order form online
 
 # Demo (示範影片)
 ...
