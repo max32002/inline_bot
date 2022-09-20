@@ -1,5 +1,7 @@
 # inline_bot
-inline 填表單機器人, help you quickly fill your order form online
+inline 填表單機器人, help you quickly fill your order form online.
+
+如果是在公用的電腦，建議不要填入自己所有的信用卡資料，以避免個人的資料其他共用電腦的使用者被盜用。
 
 # Demo (示範影片)
 https://youtu.be/uO2OdnL22Sk
