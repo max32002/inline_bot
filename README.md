@@ -1,19 +1,25 @@
-# inline_bot
-inline 填表單小工具, help you quickly fill your order form online
+# inline 填表單機器人
+help you quickly fill your order form online.
+
+如果是在公用的電腦，建議不要填入自己所有的信用卡資料，以避免個人的資料遭其他共用電腦的使用者被盜用。
 
 # Demo (示範影片)
-...
+https://youtu.be/uO2OdnL22Sk
 
 # How to use (如何使用)
-...
+https://max-everyday.com/2022/09/inline-bot/
 
 # How to execute source code (透過原始碼的執行方法)
-1: install latest version python.
+1: install latest version python:
 
-2: install dependency packages
+https://www.python.org/downloads/
+
+2: install dependency packages:
+
 <code>python3 -m pip install selenium</code>
 
-3: run config interface.
+3: run config interface:
+
 <code>python3 settings.py</code>
 
 
