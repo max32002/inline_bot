@@ -8,7 +8,7 @@ import random
 
 # seleniumwire not support python 2.x.
 # if you want running under python 2.x, you need to assign driver_type = 'stealth'
-#driver_type = 'selenium'
+driver_type = 'selenium'
 driver_type = 'undetected_chromedriver'
 
 from selenium import webdriver
@@ -48,7 +48,7 @@ logging.basicConfig()
 logger = logging.getLogger('logger')
 
 
-app_version = "MaxinlineBot (2022.09.20)"
+app_version = "MaxinlineBot (2022.09.22)"
 
 homepage_default = u"https://inline.app/"
 
@@ -337,28 +337,35 @@ def is_House_Rules_poped(driver):
     # part 1: check house rule pop
     #---------------------------
     house_rules_div = None
+
     try:
         house_rules_div = driver.find_element(By.ID, 'house-rules')
-        if house_rules_div is not None:
-            if house_rules_div.is_enabled():
-                #print("house rules window poped.")
+    except Exception as exc:
+        #print("check house rules fail...")
+        #print(exc)
+        pass
 
-                #houses_rules_button = house_rules_div.find_element(By.TAG_NAME, 'button')
-                houses_rules_button = house_rules_div.find_element(By.XPATH, '//button[@data-cy="confirm-house-rule"]')
-                
-                if houses_rules_button is not None:
-                    new_houses_rules_text = "..."
+    if house_rules_div is not None:
+        if house_rules_div.is_enabled():
+            #print("house rules window poped.")
 
-                    if not houses_rules_button.is_enabled():
-                        #print("found disabled houses_rules_button, enable it.")
-                        
-                        # method 1: force enable, fail.
-                        # driver.execute_script("arguments[0].disabled = false;", commit)
+            #houses_rules_button = house_rules_div.find_element(By.TAG_NAME, 'button')
+            houses_rules_button = house_rules_div.find_element(By.XPATH, '//button[@data-cy="confirm-house-rule"]')
+            
+            if houses_rules_button is not None:
+                new_houses_rules_text = "..."
 
-                        # metho 2: scroll to end.
-                        houses_rules_scroll = house_rules_div.find_element(By.XPATH, '//div[@data-show-scrollbar="true"]/div/div')
-                        if houses_rules_scroll is not None:
-                            if houses_rules_scroll.is_enabled():
+                if not houses_rules_button.is_enabled():
+                    #print("found disabled houses_rules_button, enable it.")
+                    
+                    # method 1: force enable, fail.
+                    # driver.execute_script("arguments[0].disabled = false;", commit)
+
+                    # metho 2: scroll to end.
+                    houses_rules_scroll = house_rules_div.find_element(By.XPATH, '//div[@data-show-scrollbar="true"]/div/div')
+                    if houses_rules_scroll is not None:
+                        if houses_rules_scroll.is_enabled():
+                            try:
                                 #print("found enabled scroll bar. scroll to end.")
                                 houses_rules_scroll.click()
                                 
@@ -367,21 +374,24 @@ def is_House_Rules_poped(driver):
                                 
                                 #driver.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight);", houses_rules_scroll)
                                 driver.execute_script("arguments[0].innerHTML='';", houses_rules_scroll);
+                            except Exception as exc:
+                                #print("check house rules fail...")
+                                #print(exc)
+                                pass
 
-                            new_houses_rules_text = houses_rules_scroll.text
-                            #print("new text:", new_houses_rules_text)
-                    
-                    if houses_rules_button.is_enabled():
-                        print("found enabled houses_rules_button.")
-                        if new_houses_rules_text == "":
-                            print("long long text has been removed, press next button.")
-                            houses_rules_button.click()
-                        pass
+                        #new_houses_rules_text = houses_rules_scroll.text
+                        #print("new text:", new_houses_rules_text)
+                        # reset innerHTML cuase text==empty .
+                
+                if houses_rules_button.is_enabled():
+                    print("found enabled houses_rules_button.")
+                    try:
+                        houses_rules_button.click()
+                    except Exception as exc:
+                            driver.execute_script("arguments[0].click();", houses_rules_button);
+                            #print(exc)
+                            pass
 
-    except Exception as exc:
-        pass
-        #print("check house rules fail...")
-        #print(exc)
 
     return ret
 
