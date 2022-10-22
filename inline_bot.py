@@ -48,7 +48,7 @@ logging.basicConfig()
 logger = logging.getLogger('logger')
 
 
-app_version = "MaxinlineBot (2022.09.22)"
+app_version = "MaxinlineBot (2022.10.22)"
 
 homepage_default = u"https://inline.app/"
 
@@ -174,7 +174,7 @@ def load_config_from_local(driver):
         if len(homepage) == 0:
             homepage = homepage_default
 
-        Root_Dir = ""
+        Root_Dir = get_app_root()
         if browser == "chrome":
 
             DEFAULT_ARGS = [
@@ -230,15 +230,21 @@ def load_config_from_local(driver):
 
             chrome_options = webdriver.ChromeOptions()
 
+            chrome_options.add_argument('--disable-features=TranslateUI')
+            chrome_options.add_argument('--disable-translate')
+            chrome_options.add_argument('--lang=zh-TW')
+
             # for navigator.webdriver
             chrome_options.add_experimental_option("excludeSwitches", ['enable-automation'])
             chrome_options.add_experimental_option('useAutomationExtension', False)
             chrome_options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False,'profile.default_content_setting_values':{'notifications':2}})
 
             # default os is linux/mac
-            chromedriver_path =Root_Dir+ "webdriver/chromedriver"
-            if platform.system()=="windows":
-                chromedriver_path =Root_Dir+ "webdriver/chromedriver.exe"
+            webdriver_path = os.path.join(Root_Dir, "webdriver")
+            chromedriver_path = os.path.join(webdriver_path,"chromedriver")
+            print("platform.system().lower():", platform.system().lower())
+            if platform.system().lower()=="windows":
+                chromedriver_path = os.path.join(webdriver_path,"chromedriver.exe")
 
             #caps = DesiredCapabilities().CHROME
             caps = chrome_options.to_capabilities()
@@ -267,6 +273,10 @@ def load_config_from_local(driver):
                 options.add_argument("--password-store=basic")
                 options.page_load_strategy="eager"
                 #print("strategy", options.page_load_strategy)
+
+                options.add_argument('--disable-features=TranslateUI')
+                options.add_argument('--disable-translate')
+                options.add_argument('--lang=zh-TW')
 
                 if os.path.exists(chromedriver_path):
                     print("Use user driver path:", chromedriver_path)
@@ -304,6 +314,16 @@ def load_config_from_local(driver):
 
         time.sleep(1.0)
 
+        #print("try to close opened tabs.")
+        try:
+            window_handles_count = len(driver.window_handles)
+            if window_handles_count >= 1:
+                driver.switch_to.window(driver.window_handles[1])
+                driver.close()
+                driver.switch_to.window(driver.window_handles[0])
+        except Exception as excSwithFail:
+            pass
+
         # get url from dropdownlist.
         homepage_url = ""
         if len(homepage) > 0:
@@ -326,8 +346,14 @@ def load_config_from_local(driver):
             except Exception as excSwithFail:
                 pass
 
-            driver.get(homepage_url)
-            print("after homepage:", homepage_url)
+            try:
+                print("goto url:", homepage)
+                driver.get(homepage_url)
+            except WebDriverException:
+                print('oh no not again !')
+            except Exception as exec1:
+                print('get() raise Exception:', exec1)
+                pass
 
     return driver
 

@@ -16,7 +16,7 @@ import os
 import sys
 import json
 
-app_version = "MaxinlineBot (2022.09.22)"
+app_version = "MaxinlineBot (2022.10.22)"
 
 config_filepath = None
 config_dict = None
