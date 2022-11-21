@@ -617,7 +617,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     # Time Alt
     global lbl_book_now_time_alt
-    lbl_book_now_time_alt = Label(frame_group_header, text="Time (Alternative)")
+    lbl_book_now_time_alt = Label(frame_group_header, text=translate[language_code]["booking_time_alt"])
     lbl_book_now_time_alt.grid(column=0, row=group_row_count, sticky = E)
 
     global txt_book_now_time_alt
