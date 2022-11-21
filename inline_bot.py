@@ -934,8 +934,9 @@ def main():
             , u'Failed to establish a new connection'
             , u'Connection refused'
             , u'disconnected'
-            , u'without establishing a connection']
+            , u'without establishing a connection'
             , u'web view not found'
+            ]
             for each_error_string in exit_bot_error_strings:
                 # for python2
                 # say goodbye to python2
