@@ -35,7 +35,7 @@ warnings.simplefilter('ignore',InsecureRequestWarning)
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-CONST_APP_VERSION = "MaxinlineBot (2022.11.21)"
+CONST_APP_VERSION = "MaxinlineBot (2022.12.08)"
 CONST_HOMEPAGE_DEFAULT = "https://tixcraft.com"
 
 def get_app_root():
@@ -667,63 +667,83 @@ def book_time(el_time_picker_list, target_time):
 
     is_one_of_time_picket_viewable = False
 
-    if not el_time_picker_list is None:
-        for el_time_picker in el_time_picker_list:
+    for el_time_picker in el_time_picker_list:
+        is_visible = False
+        try:
             if el_time_picker.is_enabled():
-                is_one_of_time_picket_viewable = True
-
+                is_visible = False
+        except Exception as exc:
+            pass
+        
+        time_picker_text = None
+        if is_visible:
+            is_one_of_time_picket_viewable = True
+            try:
                 time_picker_text = str(el_time_picker.text)
-                if ":" in time_picker_text:
-                    #print("button text:", time_picker_text)
+            except Exception as exc:
+                pass
+        
+        if time_picker_text is None:
+            time_picker_text = ""
+
+        if len(time_picker_text) > 0:
+            if ":" in time_picker_text:
+                #print("button text:", time_picker_text)
+                button_cass = None
+                try:
                     button_cass = str(el_time_picker.get_attribute('class'))
-                    
-                    is_button_able_to_select = True
-                    if "selected" in button_cass:
-                        is_button_able_to_select = False
-                        ret = True
-                        #print("button is selected:", button_cass, time_picker_text)
+                except Exception as exc:
+                    pass
+                if button_cass is None:
+                    button_cass = ""
+                
+                is_button_able_to_select = True
+                if "selected" in button_cass:
+                    is_button_able_to_select = False
+                    ret = True
+                    #print("button is selected:", button_cass, time_picker_text)
+
+                    # no need more loop.
+                    break
+
+                if "full" in button_cass:
+                    is_button_able_to_select = False
+                    if target_time in time_picker_text:
+                        #print("button is full:", button_cass, time_picker_text)
+                        fail_code = 100
 
                         # no need more loop.
                         break
+                
+                if is_button_able_to_select:
+                    if target_time in time_picker_text:
+                        is_able_to_click = True
+                        if is_able_to_click:
+                            print('click this time block:', time_picker_text)
 
-                    if "full" in button_cass:
-                        is_button_able_to_select = False
-                        if target_time in time_picker_text:
-                            #print("button is full:", button_cass, time_picker_text)
-                            fail_code = 100
+                            try:
+                                el_time_picker.click()
+                                ret = True
+                            except Exception as exc:
+                                # is not clickable at point
+                                #print("click target time fail.", exc)
+                                fail_code = 201
 
-                            # no need more loop.
-                            break
+                                # scroll to view ... fail.
+                                #driver.execute_script("console.log(\"scroll to view\");")
+                                #driver.execute_script("arguments[0].scrollIntoView(false);", el_time_picker)
 
-                    
-                    if is_button_able_to_select:
-                        if target_time in time_picker_text:
-                            is_able_to_click = True
-                            if is_able_to_click:
-                                if el_time_picker.is_enabled():
-                                    print('click this time block:', time_picker_text)
-
-                                    try:
-                                        el_time_picker.click()
-                                        ret = True
-                                    except Exception as exc:
-                                        # is not clickable at point
-                                        #print("click target time fail.", exc)
-                                        fail_code = 201
-
-                                        # scroll to view ... fail.
-                                        #driver.execute_script("console.log(\"scroll to view\");")
-                                        #driver.execute_script("arguments[0].scrollIntoView(false);", el_time_picker)
-
-                                        # JS
-                                        print('click to button using javascript.')
-                                        driver.execute_script("console.log(\"click to button.\");")
-                                        driver.execute_script("arguments[0].click();", el_time_picker)
-                                        pass
-                                else:
-                                    fail_code = 200
-                                    print("target button is not viewable or not enable.")
+                                # JS
+                                print('click to button using javascript.')
+                                try:
+                                    driver.execute_script("console.log(\"click to button.\");")
+                                    driver.execute_script("arguments[0].click();", el_time_picker)
+                                except Exception as exc:
                                     pass
+                        else:
+                            fail_code = 200
+                            print("target button is not viewable or not enable.")
+                            pass
 
         if not is_one_of_time_picket_viewable:
             fail_code = 1

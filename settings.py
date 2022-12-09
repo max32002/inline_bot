@@ -19,7 +19,7 @@ import platform
 import json
 import webbrowser
 
-CONST_APP_VERSION = "MaxinlineBot (2022.11.21)"
+CONST_APP_VERSION = "MaxinlineBot (2022.12.08)"
 
 translate={}
 
