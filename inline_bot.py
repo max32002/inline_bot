@@ -533,6 +533,7 @@ def fill_text_by_default(el_form, by_method, query_keyword, default_value, assig
             if text_name_value == "":
                 #print("try to send keys:", user_name)
                 if assign_method=='SENDKEY':
+                    el_text_name.click()
                     el_text_name.send_keys(default_value)
                     ret = True
                 if assign_method=='JS':
@@ -584,7 +585,16 @@ def fill_personal_info(driver, config_dict):
         cc_number = config_dict["cc_number"]
         cc_exp = config_dict["cc_exp"]
         cc_ccv = config_dict["cc_ccv"]
-        iframes = el_form.find_elements(By.TAG_NAME, "iframe")
+        
+        iframes = None
+        try:
+            iframes = el_form.find_elements(By.TAG_NAME, "iframe")
+        except Exception as exc:
+            pass
+
+        if iframes is None:
+            iframes = []
+
         #print('start to travel iframes...')
         cc_check=[False,False,False]
         idx_iframe=0
@@ -599,7 +609,11 @@ def fill_personal_info(driver, config_dict):
                 pass
 
             idx_iframe += 1
-            driver.switch_to.frame(iframe)
+            try:
+                driver.switch_to.frame(iframe)
+            except Exception as exc:
+                pass
+
             if "card-number" in iframe_url:
                 if not cc_check[0]:
                     #print('check cc-number at loop(%d)...' % (idx_iframe))
@@ -618,7 +632,10 @@ def fill_personal_info(driver, config_dict):
                     ret = fill_text_by_default(driver, By.ID, 'cc-ccv', cc_ccv)
                     cc_check[2]=ret
                     #print("cc-ccv ret:", ret)
-            driver.switch_to.default_content()
+            try:
+                driver.switch_to.default_content()
+            except Exception as exc:
+                pass
 
         pass_all_check = True
 
