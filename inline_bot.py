@@ -35,7 +35,7 @@ warnings.simplefilter('ignore',InsecureRequestWarning)
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-CONST_APP_VERSION = "MaxinlineBot (2022.12.10)"
+CONST_APP_VERSION = "MaxinlineBot (2022.12.11)"
 CONST_HOMEPAGE_DEFAULT = "https://tixcraft.com"
 
 def get_app_root():
@@ -516,7 +516,7 @@ def checkbox_agree(el_form, by_method, query_keyword, assign_method='CLICK'):
 # return:
 #   True: value in text
 #   False: assign fail.
-def fill_text_by_default(el_form, by_method, query_keyword, default_value, assign_method='JS'):
+def fill_text_by_default(el_form, by_method, query_keyword, default_value, assign_method='SENDKEY'):
     ret = False
 
     # user name
@@ -528,22 +528,31 @@ def fill_text_by_default(el_form, by_method, query_keyword, default_value, assig
         #print("find el_text_%s fail" % (query_keyword))
     if el_text_name is not None:
         #print("found el_text_name")
+        text_name_value = None
         try:
             text_name_value = str(el_text_name.get_attribute('value'))
+        except Exception as exc:
+            pass
+        if not text_name_value is None:
             if text_name_value == "":
                 #print("try to send keys:", user_name)
                 if assign_method=='SENDKEY':
-                    el_text_name.click()
-                    el_text_name.send_keys(default_value)
-                    ret = True
+                    try:
+                        el_text_name.send_keys(default_value)
+                        ret = True
+                    except Exception as exc:
+                        try:
+                            driver.execute_script("arguments[0].value='%s';" % (default_value), el_text_name);
+                        except Exception as exc:
+                            pass
                 if assign_method=='JS':
-                    driver.execute_script("arguments[0].value='%s';" % (default_value), el_text_name);
+                    try:
+                        driver.execute_script("arguments[0].value='%s';" % (default_value), el_text_name);
+                    except Exception as exc:
+                        pass
+
             else:
                 ret = True
-                pass
-                #print("text not empty, value:", text_name_value)
-        except Exception as exc:
-            print("send el_text_%s fail" % (query_keyword))
 
     return ret
 
@@ -617,7 +626,7 @@ def fill_personal_info(driver, config_dict):
             if "card-number" in iframe_url:
                 if not cc_check[0]:
                     #print('check cc-number at loop(%d)...' % (idx_iframe))
-                    ret = fill_text_by_default(driver, By.ID, 'cc-number', cc_number,assign_method="SENDKEY")
+                    ret = fill_text_by_default(driver, By.ID, 'cc-number', cc_number)
                     cc_check[0]=ret
                     #print("cc-number ret:", ret)
             if "expiration-date" in iframe_url:
