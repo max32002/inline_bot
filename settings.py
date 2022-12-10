@@ -19,7 +19,7 @@ import platform
 import json
 import webbrowser
 
-CONST_APP_VERSION = "MaxinlineBot (2022.12.08)"
+CONST_APP_VERSION = "MaxinlineBot (2022.12.10)"
 
 translate={}
 
@@ -240,6 +240,11 @@ def load_json():
 def btn_save_clicked():
     btn_save_act()
 
+def format_time_string(data):
+    if not data is None:
+        data = data.replace('：',':')
+    return data
+
 def btn_save_act(slience_mode=False):
     app_root = get_app_root()
     config_filepath = os.path.join(app_root, 'settings.json')
@@ -299,6 +304,7 @@ def btn_save_act(slience_mode=False):
             messagebox.showerror("Error", "Please enter booking time")
         else:
             config_dict["book_now_time"] = txt_book_now_time.get().strip()
+            config_dict["book_now_time"] = format_time_string(config_dict["book_now_time"])
 
     if is_all_data_correct:
         if txt_user_name.get().strip()=="":
@@ -323,6 +329,7 @@ def btn_save_act(slience_mode=False):
 
     if is_all_data_correct:
         config_dict["book_now_time_alt"] = txt_book_now_time_alt.get().strip()
+        config_dict["book_now_time_alt"] = format_time_string(config_dict["book_now_time_alt"])
 
         config_dict["user_gender"] = combo_user_gender.get().strip()
 

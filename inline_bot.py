@@ -35,7 +35,7 @@ warnings.simplefilter('ignore',InsecureRequestWarning)
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-CONST_APP_VERSION = "MaxinlineBot (2022.12.08)"
+CONST_APP_VERSION = "MaxinlineBot (2022.12.10)"
 CONST_HOMEPAGE_DEFAULT = "https://tixcraft.com"
 
 def get_app_root():
@@ -671,7 +671,7 @@ def book_time(el_time_picker_list, target_time):
         is_visible = False
         try:
             if el_time_picker.is_enabled():
-                is_visible = False
+                is_visible = True
         except Exception as exc:
             pass
         
@@ -689,27 +689,27 @@ def book_time(el_time_picker_list, target_time):
         if len(time_picker_text) > 0:
             if ":" in time_picker_text:
                 #print("button text:", time_picker_text)
-                button_cass = None
+                button_class_string = None
                 try:
-                    button_cass = str(el_time_picker.get_attribute('class'))
+                    button_class_string = str(el_time_picker.get_attribute('class'))
                 except Exception as exc:
                     pass
-                if button_cass is None:
-                    button_cass = ""
+                if button_class_string is None:
+                    button_class_string = ""
                 
                 is_button_able_to_select = True
-                if "selected" in button_cass:
+                if "selected" in button_class_string:
                     is_button_able_to_select = False
                     ret = True
-                    #print("button is selected:", button_cass, time_picker_text)
+                    #print("button is selected:", button_class_string, time_picker_text)
 
                     # no need more loop.
                     break
 
-                if "full" in button_cass:
+                if "full" in button_class_string:
                     is_button_able_to_select = False
                     if target_time in time_picker_text:
-                        #print("button is full:", button_cass, time_picker_text)
+                        #print("button is full:", button_class_string, time_picker_text)
                         fail_code = 100
 
                         # no need more loop.
@@ -750,7 +750,7 @@ def book_time(el_time_picker_list, target_time):
     return ret, fail_code
 
 def assign_adult_picker(driver, adult_picker, force_adult_picker):
-    is_alult_picker_assigned = False
+    is_adult_picker_assigned = False
 
     # member number.
     el_adult_picker = None
@@ -785,7 +785,7 @@ def assign_adult_picker(driver, adult_picker, force_adult_picker):
             if selected_value != "0":
                 # not is default value, do assign.
                 is_need_assign_select = False
-                is_alult_picker_assigned = True
+                is_adult_picker_assigned = True
 
                 if force_adult_picker:
                     if selected_value != adult_picker:
@@ -796,13 +796,13 @@ def assign_adult_picker(driver, adult_picker, force_adult_picker):
                 adult_number_select = Select(el_adult_picker)
                 try:
                     adult_number_select.select_by_value(adult_picker)
-                    is_alult_picker_assigned = True
+                    is_adult_picker_assigned = True
                 except Exception as exc:
                     print("select_by_value for adult-picker fail")
                     print(exc)
                     pass
 
-    return is_alult_picker_assigned
+    return is_adult_picker_assigned
 
 def assign_time_picker(driver, book_now_time, book_now_time_alt):
     show_debug_message = True       # debug.
@@ -811,15 +811,20 @@ def assign_time_picker(driver, book_now_time, book_now_time_alt):
     ret = False
 
     el_time_picker_list = None
+    button_query_string = 'button.time-slot'
     try:
-        #el_time_picker_list = driver.find_elements(By.XPATH, '//button[contains(@class, "ime-slot")]')
-        el_time_picker_list = driver.find_elements(By.CSS_SELECTOR, 'button.time-slot')
+        el_time_picker_list = driver.find_elements(By.CSS_SELECTOR, button_query_string)
     except Exception as exc:
-        #print("booking Exception:", exc)
+        if show_debug_message:
+            print("find time buttons excpetion:", exc)
         pass
 
     if not el_time_picker_list is None:
-        if len(el_time_picker_list) > 0:
+        el_time_picker_list_size = len(el_time_picker_list)
+        if show_debug_message:
+            print("el_time_picker_list_size:", el_time_picker_list_size)
+
+        if el_time_picker_list_size > 0:
             # default use main time.
             book_time_ret, book_fail_code = book_time(el_time_picker_list, book_now_time)
             
@@ -866,20 +871,20 @@ def inline_reg(driver, config_dict):
         force_adult_picker = config_dict["force_adult_picker"]
 
         # date picker.
-        is_alult_picker_assigned = assign_adult_picker(driver, adult_picker, force_adult_picker)
+        is_adult_picker_assigned = assign_adult_picker(driver, adult_picker, force_adult_picker)
         if show_debug_message:
-            print("is_alult_picker_assigned:", is_alult_picker_assigned)
+            print("is_adult_picker_assigned:", is_adult_picker_assigned)
 
-        if not is_alult_picker_assigned:
+        if not is_adult_picker_assigned:
             # retry once.
-            is_alult_picker_assigned = assign_adult_picker(driver, adult_picker, force_adult_picker)
+            is_adult_picker_assigned = assign_adult_picker(driver, adult_picker, force_adult_picker)
             if show_debug_message:
-                print("retry is_alult_picker_assigned:", is_alult_picker_assigned)
+                print("retry is_adult_picker_assigned:", is_adult_picker_assigned)
 
         # time picker.
         book_now_time = config_dict["book_now_time"]
         book_now_time_alt = config_dict["book_now_time_alt"]
-        if is_alult_picker_assigned:
+        if is_adult_picker_assigned:
             ret = assign_time_picker(driver, book_now_time, book_now_time_alt)
             if show_debug_message:
                 print("assign_time_picker return:", ret)
