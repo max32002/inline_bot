@@ -35,8 +35,11 @@ warnings.simplefilter('ignore',InsecureRequestWarning)
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-CONST_APP_VERSION = "MaxinlineBot (2022.12.11)"
-CONST_HOMEPAGE_DEFAULT = "https://tixcraft.com"
+CONST_APP_VERSION = "MaxinlineBot (2023.05.31)"
+CONST_HOMEPAGE_DEFAULT = "https://inline.app/"
+
+CONST_CHROME_VERSION_NOT_MATCH_EN="Please download the WebDriver version to match your browser version."
+CONST_CHROME_VERSION_NOT_MATCH_TW="請下載與您瀏覽器相同版本的WebDriver版本，或更新您的瀏覽器版本。"
 
 def get_app_root():
     # 讀取檔案裡的參數值
@@ -59,9 +62,11 @@ def get_config_dict():
     return config_dict
 
 def get_favoriate_extension_path(webdriver_path):
+    print("webdriver_path:", webdriver_path)
     no_google_analytics_path = os.path.join(webdriver_path,"no_google_analytics_1.1.0.0.crx")
-    no_ad_path = os.path.join(webdriver_path,"Adblock_3.14.2.0.crx")
-    return no_google_analytics_path, no_ad_path
+    no_ad_path = os.path.join(webdriver_path,"Adblock_3.16.1.0.crx")
+    buster_path = os.path.join(webdriver_path,"Buster_2.0.1.0.crx")
+    return no_google_analytics_path, no_ad_path, buster_path
 
 def get_chromedriver_path(webdriver_path):
     chromedriver_path = os.path.join(webdriver_path,"chromedriver")
@@ -69,29 +74,38 @@ def get_chromedriver_path(webdriver_path):
         chromedriver_path = os.path.join(webdriver_path,"chromedriver.exe")
     return chromedriver_path
 
-def load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable):
+def get_chrome_options(webdriver_path, adblock_plus_enable, browser="chrome", headless = False):
     chrome_options = webdriver.ChromeOptions()
-
-    chromedriver_path = get_chromedriver_path(webdriver_path)
+    if browser=="edge":
+        chrome_options = webdriver.EdgeOptions()
+    if browser=="safari":
+        chrome_options = webdriver.SafariOptions()
 
     # some windows cause: timed out receiving message from renderer
     if adblock_plus_enable:
         # PS: this is ocx version.
-        no_google_analytics_path, no_ad_path = get_favoriate_extension_path(webdriver_path)
+        no_google_analytics_path, no_ad_path, buster_path = get_favoriate_extension_path(webdriver_path)
 
         if os.path.exists(no_google_analytics_path):
             chrome_options.add_extension(no_google_analytics_path)
         if os.path.exists(no_ad_path):
             chrome_options.add_extension(no_ad_path)
-
+        if os.path.exists(buster_path):
+            chrome_options.add_extension(buster_path)
+    if headless:
+        #chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--disable-features=TranslateUI')
     chrome_options.add_argument('--disable-translate')
     chrome_options.add_argument('--lang=zh-TW')
+    chrome_options.add_argument('--disable-web-security')
+    chrome_options.add_argument("--no-sandbox");
 
     # for navigator.webdriver
     chrome_options.add_experimental_option("excludeSwitches", ['enable-automation'])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.add_experimental_option("prefs", {"credentials_enable_service": False, "profile.password_manager_enabled": False})
+    # Deprecated chrome option is ignored: useAutomationExtension
+    #chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_experimental_option("prefs", {"credentials_enable_service": False, "profile.password_manager_enabled": False, "translate":{"enabled": False}})
 
     #caps = DesiredCapabilities().CHROME
     caps = chrome_options.to_capabilities()
@@ -105,10 +119,32 @@ def load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable):
     #caps["unhandledPromptBehavior"] = u"dismiss"
     caps["unhandledPromptBehavior"] = u"accept"
 
-    chrome_service = Service(chromedriver_path)
+    return chrome_options, caps
 
-    # method 6: Selenium Stealth
-    driver = webdriver.Chrome(service=chrome_service, options=chrome_options, desired_capabilities=caps)
+def load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable, headless):
+    driver = None
+
+    chromedriver_path = get_chromedriver_path(webdriver_path)
+    if not os.path.exists(chromedriver_path):
+        print("Please download chromedriver and extract zip to webdriver folder from this url:")
+        print("請下在面的網址下載與你chrome瀏覽器相同版本的chromedriver,解壓縮後放到webdriver目錄裡：")
+        print(URL_CHROME_DRIVER)
+    else:
+        chrome_service = Service(chromedriver_path)
+        chrome_options, caps = get_chrome_options(webdriver_path, adblock_plus_enable, headless=headless)
+        try:
+            # method 6: Selenium Stealth
+            driver = webdriver.Chrome(service=chrome_service, options=chrome_options, desired_capabilities=caps)
+        except Exception as exc:
+            error_message = str(exc)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
+
+            if "This version of ChromeDriver only supports Chrome version" in error_message:
+                print(CONST_CHROME_VERSION_NOT_MATCH_EN)
+                print(CONST_CHROME_VERSION_NOT_MATCH_TW)
 
     if driver_type=="stealth":
         from selenium_stealth import stealth
@@ -125,7 +161,7 @@ def load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable):
 
     return driver
 
-def load_chromdriver_uc(webdriver_path, adblock_plus_enable):
+def load_chromdriver_uc(webdriver_path, adblock_plus_enable, headless):
     import undetected_chromedriver as uc
 
     chromedriver_path = get_chromedriver_path(webdriver_path)
@@ -136,61 +172,77 @@ def load_chromdriver_uc(webdriver_path, adblock_plus_enable):
     #print("strategy", options.page_load_strategy)
 
     if adblock_plus_enable:
-        no_google_analytics_path, no_ad_path = get_favoriate_extension_path(webdriver_path)
+        no_google_analytics_path, no_ad_path, buster_path = get_favoriate_extension_path(webdriver_path)
         no_google_analytics_folder_path = no_google_analytics_path.replace('.crx','')
         no_ad_folder_path = no_ad_path.replace('.crx','')
+        buster_path = buster_path.replace('.crx','')
         load_extension_path = ""
         if os.path.exists(no_google_analytics_folder_path):
             load_extension_path += "," + no_google_analytics_folder_path
         if os.path.exists(no_ad_folder_path):
             load_extension_path += "," + no_ad_folder_path
+        if os.path.exists(buster_path):
+            load_extension_path += "," + buster_path
         if len(load_extension_path) > 0:
             options.add_argument('--load-extension=' + load_extension_path[1:])
 
+    if headless:
+        #options.add_argument('--headless')
+        options.add_argument('--headless=new')
     options.add_argument('--disable-features=TranslateUI')
     options.add_argument('--disable-translate')
     options.add_argument('--lang=zh-TW')
+    options.add_argument('--disable-web-security')
+    options.add_argument("--no-sandbox");
 
     options.add_argument("--password-store=basic")
-    options.add_experimental_option("prefs", {"credentials_enable_service": False, "profile.password_manager_enabled": False})
+    options.add_experimental_option("prefs", {"credentials_enable_service": False, "profile.password_manager_enabled": False, "translate":{"enabled": False}})
 
     caps = options.to_capabilities()
     caps["unhandledPromptBehavior"] = u"accept"
 
     driver = None
-    if os.path.exists(chromedriver_path):
-        print("Use user driver path:", chromedriver_path)
-        #driver = uc.Chrome(service=chrome_service, options=options, suppress_welcome=False)
-        is_local_chrome_browser_lower = False
+    try:
+        driver = uc.Chrome(executable_path=chromedriver_path, options=options, desired_capabilities=caps, suppress_welcome=False)
+    except Exception as exc:
+        error_message = str(exc)
+        left_part = None
+        if "Stacktrace:" in error_message:
+            left_part = error_message.split("Stacktrace:")[0]
+            print(left_part)
+
+        if "This version of ChromeDriver only supports Chrome version" in error_message:
+            print(CONST_CHROME_VERSION_NOT_MATCH_EN)
+            print(CONST_CHROME_VERSION_NOT_MATCH_TW)
+
+    else:
+        #print("Oops! web driver not on path:",chromedriver_path )
+        print('undetected_chromedriver automatically download chromedriver.')
         try:
-            driver = uc.Chrome(executable_path=chromedriver_path, options=options, desired_capabilities=caps, suppress_welcome=False)
+            driver = uc.Chrome(options=options, desired_capabilities=caps, suppress_welcome=False)
         except Exception as exc:
-            if "cannot connect to chrome" in str(exc):
-                if "This version of ChromeDriver only supports Chrome version" in str(exc):
-                    is_local_chrome_browser_lower = True
-            print(exc)
+            error_message = str(exc)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
+
+            if "This version of ChromeDriver only supports Chrome version" in error_message:
+                print(CONST_CHROME_VERSION_NOT_MATCH_EN)
+                print(CONST_CHROME_VERSION_NOT_MATCH_TW)
             pass
 
-        if is_local_chrome_browser_lower:
-            print("Use local user downloaded chromedriver to lunch chrome browser.")
-            driver_type = "selenium"
-            driver = load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable)
-    else:
-        print("Oops! web driver not on path:",chromedriver_path )
-        print('let uc automatically download chromedriver.')
-        driver = uc.Chrome(options=options, desired_capabilities=caps, suppress_welcome=False)
-
     if driver is None:
-        print("create web drive object fail!")
-    else:
-        download_dir_path="."
-        params = {
-            "behavior": "allow",
-            "downloadPath": os.path.realpath(download_dir_path)
-        }
-        #print("assign setDownloadBehavior.")
-        driver.execute_cdp_cmd("Page.setDownloadBehavior", params)
-    #print("driver capabilities", driver.capabilities)
+        print("create web drive object by undetected_chromedriver fail!")
+
+        if os.path.exists(chromedriver_path):
+            print("Unable to use undetected_chromedriver, ")
+            print("try to use local chromedriver to launch chrome browser.")
+            driver_type = "selenium"
+            driver = load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable, headless)
+        else:
+            print("建議您自行下載 ChromeDriver 到 webdriver 的資料夾下")
+            print("you need manually download ChromeDriver to webdriver folder.")
 
     return driver
 
@@ -280,6 +332,7 @@ def get_driver_by_config(config_dict, driver_type):
         webdriver_path = os.path.join(Root_Dir, "webdriver")
         print("platform.system().lower():", platform.system().lower())
 
+        headless = False
         if browser == "chrome":
             # method 6: Selenium Stealth
             if driver_type != "undetected_chromedriver":
@@ -291,7 +344,7 @@ def get_driver_by_config(config_dict, driver_type):
                     if hasattr(sys, 'frozen'):
                         from multiprocessing import freeze_support
                         freeze_support()
-                driver = load_chromdriver_uc(webdriver_path, adblock_plus_enable)
+                driver = load_chromdriver_uc(webdriver_path, adblock_plus_enable, headless)
 
         #print("try to close opened tabs.")
         '''
@@ -557,6 +610,12 @@ def fill_text_by_default(el_form, by_method, query_keyword, default_value, assig
     return ret
 
 def fill_personal_info(driver, config_dict):
+    show_debug_message = True       # debug.
+    show_debug_message = False      # online
+
+    if config_dict["advanced"]["verbose"]:
+        show_debug_message = True
+
     ret = False
     #print("fill form")
 
@@ -883,7 +942,10 @@ def assign_time_picker(driver, book_now_time, book_now_time_alt):
 
 def inline_reg(driver, config_dict):
     show_debug_message = True       # debug.
-    #show_debug_message = False      # online
+    show_debug_message = False      # online
+
+    if config_dict["advanced"]["verbose"]:
+        show_debug_message = True
 
     ret = False
 
@@ -937,8 +999,10 @@ def main():
     if debugMode:
         print("Start to looping, detect browser url...")
 
+    DISCONNECTED_MSG = ': target window already closed'
+
     while True:
-        time.sleep(0.1)
+        time.sleep(0.05)
 
         is_alert_popup = False
 
@@ -947,24 +1011,64 @@ def main():
             print("web driver not accessible!")
             break
 
+        #is_alert_popup = check_pop_alert(driver)
+
+        #MUST "do nothing: if alert popup.
+        #print("is_alert_popup:", is_alert_popup)
+        if is_alert_popup:
+            continue
+
         url = ""
         try:
             url = driver.current_url
-
         except NoSuchWindowException:
-            #print('NoSuchWindowException at this url:', url )
+            print('NoSuchWindowException at this url:', url )
             #print("last_url:", last_url)
+            #print("get_log:", driver.get_log('driver'))
+            window_handles_count = 0
             try:
                 window_handles_count = len(driver.window_handles)
+                #print("window_handles_count:", window_handles_count)
                 if window_handles_count >= 1:
                     driver.switch_to.window(driver.window_handles[0])
+                    driver.switch_to.default_content()
+                    time.sleep(0.2)
             except Exception as excSwithFail:
+                #print("excSwithFail:", excSwithFail)
                 pass
+            if window_handles_count==0:
+                try:
+                    driver_log = driver.get_log('driver')[-1]['message']
+                    print("get_log:", driver_log)
+                    if DISCONNECTED_MSG in driver_log:
+                        print('quit bot by NoSuchWindowException')
+                        driver.quit()
+                        sys.exit()
+                        break
+                except Exception as excGetDriverMessageFail:
+                    #print("excGetDriverMessageFail:", excGetDriverMessageFail)
+                    except_string = str(excGetDriverMessageFail)
+                    if 'HTTP method not allowed' in except_string:
+                        print('quit bot by close browser')
+                        driver.quit()
+                        sys.exit()
+                        break
+
+        except UnexpectedAlertPresentException as exc1:
+            print('UnexpectedAlertPresentException at this url:', url )
+            # PS: do nothing...
+            # PS: current chrome-driver + chrome call current_url cause alert/prompt dialog disappear!
+            # raise exception at selenium/webdriver/remote/errorhandler.py
+            # after dialog disappear new excpetion: unhandled inspector error: Not attached to an active page
+            is_pass_alert = False
+            is_pass_alert = True
+            if is_pass_alert:
+                try:
+                    driver.switch_to.alert.accept()
+                except Exception as exc:
+                    pass
 
         except Exception as exc:
-            logger.error('Exception')
-            logger.error(exc, exc_info=True)
-
             logger.error('Maxbot URL Exception')
             logger.error(exc, exc_info=True)
 
@@ -989,20 +1093,9 @@ def main():
             , u'web view not found'
             ]
             for each_error_string in exit_bot_error_strings:
-                # for python2
-                # say goodbye to python2
-                '''
-                try:
-                    basestring
-                    if isinstance(each_error_string, unicode):
-                        each_error_string = str(each_error_string)
-                except NameError:  # Python 3.x
-                    basestring = str
-                '''
-
                 if isinstance(str_exc, str):
                     if each_error_string in str_exc:
-                        print(u'quit bot')
+                        print('quit bot by error:', each_error_string)
                         driver.quit()
                         sys.exit()
                         break
@@ -1010,7 +1103,7 @@ def main():
             # not is above case, print exception.
             print("Exception:", str_exc)
             pass
-            
+
         if url is None:
             continue
         else:
