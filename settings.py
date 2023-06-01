@@ -14,22 +14,29 @@ except ImportError:
     from tkinter import messagebox
 import os
 import sys
-import json
 import platform
-import json
 import webbrowser
+import threading
+import subprocess
+import json
 
-CONST_APP_VERSION = "MaxinlineBot (2022.12.11)"
+CONST_APP_VERSION = "MaxinlineBot (2023.05.31)"
 
-translate={}
+CONST_MAXBOT_CONFIG_FILE = "settings.json"
 
-CONST_HOMEPAGE_DEFAULT = u"https://inline.app/"
-CONST_GENDER_DEFAULT = u'小姐'
+CONST_HOMEPAGE_DEFAULT = "https://inline.app/"
+CONST_GENDER_DEFAULT = '小姐'
 
 URL_DONATE = 'https://max-everyday.com/about/#donate'
 URL_HELP = 'https://max-everyday.com/2022/09/inline-bot/'
 URL_RELEASE = 'https://github.com/max32002/inline_bot/releases'
 URL_FB = 'https://www.facebook.com/maxbot.ticket'
+
+CONST_WEBDRIVER_TYPE_SELENIUM = "selenium"
+#CONST_WEBDRIVER_TYPE_STEALTH = "stealth"
+CONST_WEBDRIVER_TYPE_UC = "undetected_chromedriver"
+
+translate={}
 
 def load_translate():
     translate = {}
@@ -58,6 +65,8 @@ def load_translate():
     en_us["card_ccv"] = "ccv"
     en_us["auto_submit"] = "Auto submit"
 
+    en_us["verbose"] = 'Verbose mode'
+
     en_us["preference"] = 'Preference'
     en_us["advanced"] = 'Advanced'
     en_us["about"] = 'About'
@@ -66,6 +75,8 @@ def load_translate():
     en_us["save"] = 'Save'
     en_us["exit"] = 'Close'
     en_us["copy"] = 'Copy'
+    en_us["restore_defaults"] = 'Restore Defaults'
+    en_us["done"] = 'Done'
 
     en_us["maxbot_slogan"] = 'MaxinlineBot is a FREE and open source bot program. Wish you booking successfully.'
     en_us["donate"] = 'Donate'
@@ -97,6 +108,8 @@ def load_translate():
     zh_tw["card_ccv"] = "安全碼"
     zh_tw["auto_submit"] = "自動「確認訂位」"
 
+    zh_tw["verbose"] = '輸出詳細除錯訊息'
+
     zh_tw["preference"] = '偏好設定'
     zh_tw["advanced"] = '進階設定'
     zh_tw["about"] = '關於'
@@ -105,6 +118,8 @@ def load_translate():
     zh_tw["save"] = '存檔'
     zh_tw["exit"] = '關閉'
     zh_tw["copy"] = '複製'
+    zh_tw["restore_defaults"] = '恢復預設值'
+    zh_tw["done"] = '完成'
 
     zh_tw["maxbot_slogan"] = 'MaxinlineBot 是一個免費、開放原始碼的搶票機器人。\n祝您預訂成功。'
     zh_tw["donate"] = '打賞'
@@ -136,10 +151,14 @@ def load_translate():
     zh_cn["card_ccv"] = "安全码"
     zh_cn["auto_submit"] = "自动“确认订位”"
 
+    zh_cn["verbose"] = '输出详细除错讯息'
+
     zh_cn["preference"] = '偏好设定'
     zh_cn["advanced"] = '進階設定'
     zh_cn["about"] = '关于'
     zh_cn["copy"] = '复制'
+    zh_cn["restore_defaults"] = '恢复默认值'
+    zh_cn["done"] = '完成'
 
     zh_cn["run"] = '抢票'
     zh_cn["save"] = '存档'
@@ -155,10 +174,6 @@ def load_translate():
     ja_jp["browser"] = 'ブラウザ'
     ja_jp["language"] = '言語'
     ja_jp["enable"] = '有効'
-
-    ja_jp["preference"] = '設定'
-    ja_jp["advanced"] = '高度な設定'
-    ja_jp["about"] = '情報'
 
     ja_jp["party_size"] = "食事人数"
     ja_jp["force_party_size"] = "人数を変更する"
@@ -179,10 +194,18 @@ def load_translate():
     ja_jp["card_ccv"] = "ccv"
     ja_jp["auto_submit"] = "自動送信フォーム"
 
+    ja_jp["verbose"] = '詳細モード'
+
+    ja_jp["preference"] = '設定'
+    ja_jp["advanced"] = '高度な設定'
+    ja_jp["about"] = '情報'
+
     ja_jp["run"] = 'チケットを取る'
     ja_jp["save"] = '保存'
     ja_jp["exit"] = '閉じる'
     ja_jp["copy"] = 'コピー'
+    ja_jp["restore_defaults"] = 'デフォルトに戻す'
+    ja_jp["done"] = '終わり'
 
     ja_jp["maxbot_slogan"] = 'MaxinlineBot は無料のオープン ソース ボット プログラムです。 予約が成功しますように。'
     ja_jp["donate"] = '寄付'
@@ -208,7 +231,7 @@ def get_app_root():
 def get_default_config():
     config_dict = {}
     config_dict["homepage"] = CONST_HOMEPAGE_DEFAULT
-    config_dict["adult_picker"] = ""
+    config_dict["adult_picker"] = "2"
     config_dict["force_adult_picker"] = True
     config_dict["book_now_time"] = ""
     config_dict["book_now_time_alt"] = ""
@@ -223,6 +246,12 @@ def get_default_config():
     config_dict["cc_exp"] = ""
     config_dict["cc_ccv"] = ""
     config_dict['cc_auto_submit'] = False
+
+    config_dict['advanced']={}
+    config_dict["advanced"]["verbose"] = False
+
+    config_dict["webdriver_type"] = CONST_WEBDRIVER_TYPE_UC
+
     return config_dict
 
 def load_json():
@@ -237,15 +266,28 @@ def load_json():
         config_dict = get_default_config()
     return config_filepath, config_dict
 
-def btn_save_clicked():
-    btn_save_act()
+def btn_restore_defaults_clicked(language_code):
+    app_root = get_app_root()
+    config_filepath = os.path.join(app_root, CONST_MAXBOT_CONFIG_FILE)
+
+    config_dict = get_default_config()
+    import json
+    with open(config_filepath, 'w') as outfile:
+        json.dump(config_dict, outfile)
+    messagebox.showinfo(translate[language_code]["restore_defaults"], translate[language_code]["done"])
+
+    global root
+    load_GUI(root, config_dict)
+
+def btn_save_clicked(language_code):
+    btn_save_act(language_code)
 
 def format_time_string(data):
     if not data is None:
         data = data.replace('：',':')
     return data
 
-def btn_save_act(slience_mode=False):
+def btn_save_act(language_code, slience_mode=False):
     app_root = get_app_root()
     config_filepath = os.path.join(app_root, 'settings.json')
     
@@ -272,6 +314,7 @@ def btn_save_act(slience_mode=False):
 
     global chk_state_cc_auto_submit
     global chk_state_force_adult_picker
+    global chk_state_verbose
 
     is_all_data_correct = True
 
@@ -290,6 +333,9 @@ def btn_save_act(slience_mode=False):
             messagebox.showerror("Error", "Please select a language")
         else:
             config_dict["language"] = combo_language.get().strip()
+            
+            # display as new language.
+            language_code = get_language_code_by_name(config_dict["language"])
 
     if is_all_data_correct:
         if txt_adult_picker.get().strip()=="":
@@ -343,6 +389,8 @@ def btn_save_act(slience_mode=False):
 
         config_dict["force_adult_picker"] = bool(chk_state_force_adult_picker.get())
 
+        config_dict["advanced"]["verbose"] = bool(chk_state_verbose.get())
+
     # save config.
     if is_all_data_correct:
         import json
@@ -350,54 +398,61 @@ def btn_save_act(slience_mode=False):
             json.dump(config_dict, outfile)
 
         if slience_mode==False:
-            messagebox.showinfo("File Save", "Done ^_^")
+            messagebox.showinfo(translate[language_code]["save"], translate[language_code]["done"])
 
     return is_all_data_correct
 
-def btn_run_clicked():
-    import subprocess
-
+def btn_run_clicked(language_code):
     print('run button pressed.')
     Root_Dir = ""
-    save_ret = btn_save_act(slience_mode=True)
+    save_ret = btn_save_act(language_code, slience_mode=True)
     print("save config result:", save_ret)
-    if btn_save_act(slience_mode=True):
-        if hasattr(sys, 'frozen'):
-            print("execute in frozen mode")
+    if save_ret:
+        threading.Thread(target=launch_maxbot).start()
 
-            # check platform here.
-            if platform.system() == 'Darwin':
-                 subprocess.Popen("./inline_bot.py", shell=True)
-            if platform.system() == 'Windows':
-                subprocess.Popen("inline_bot.exe", shell=True)
-        else:
-            interpreter_binary = 'python'
-            interpreter_binary_alt = 'python3'
-            if platform.system() == 'Darwin':
-                # try python3 before python.
-                interpreter_binary = 'python3'
-                interpreter_binary_alt = 'python'
-            print("execute in shell mode.")
-            working_dir = os.path.dirname(os.path.realpath(__file__))
-            #print("script path:", working_dir)
-            #messagebox.showinfo(title="Debug0", message=working_dir)
+def launch_maxbot():
+    working_dir = os.path.dirname(os.path.realpath(__file__))
+    if hasattr(sys, 'frozen'):
+        print("execute in frozen mode")
 
-            # some python3 binary, running in 'python' command.
+        # check platform here.
+        if platform.system() == 'Darwin':
+            print("execute MacOS python script")
+            subprocess.Popen("./inline_bot", shell=True, cwd=working_dir)
+        if platform.system() == 'Linux':
+            print("execute linux binary")
+            subprocess.Popen("./inline_bot", shell=True, cwd=working_dir)
+        if platform.system() == 'Windows':
+            print("execute .exe binary.")
+            subprocess.Popen("inline_bot.exe", shell=True, cwd=working_dir)
+    else:
+        interpreter_binary = 'python'
+        interpreter_binary_alt = 'python3'
+        if platform.system() == 'Darwin':
+            # try python3 before python.
+            interpreter_binary = 'python3'
+            interpreter_binary_alt = 'python'
+        print("execute in shell mode.")
+        #print("script path:", working_dir)
+        #messagebox.showinfo(title="Debug0", message=working_dir)
+
+        # some python3 binary, running in 'python' command.
+        try:
+            print('try', interpreter_binary)
+            s=subprocess.Popen([interpreter_binary, 'inline_bot.py'], cwd=working_dir)
+            #s=subprocess.Popen(['./chrome_tixcraft'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir)
+            #s=subprocess.run(['python3', 'chrome_tixcraft.py'], cwd=working_dir)
+            #messagebox.showinfo(title="Debug1", message=str(s))
+        except Exception as exc:
+            print('try', interpreter_binary_alt)
             try:
-                print('try', interpreter_binary)
-                s=subprocess.Popen([interpreter_binary, 'inline_bot.py'], cwd=working_dir)
-                #s=subprocess.Popen(['./chrome_tixcraft'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir)
-                #s=subprocess.run(['python3', 'chrome_tixcraft.py'], cwd=working_dir)
-                #messagebox.showinfo(title="Debug1", message=str(s))
+                s=subprocess.Popen([interpreter_binary_alt, 'inline_bot.py'], cwd=working_dir)
             except Exception as exc:
-                print('try', interpreter_binary_alt)
-                try:
-                    s=subprocess.Popen([interpreter_binary_alt, 'inline_bot.py'], cwd=working_dir)
-                except Exception as exc:
-                    msg=str(exc)
-                    print("exeption:", msg)
-                    #messagebox.showinfo(title="Debug2", message=msg)
-                    pass
+                msg=str(exc)
+                print("exeption:", msg)
+                #messagebox.showinfo(title="Debug2", message=msg)
+                pass
+
 
 def open_url(url):
     webbrowser.open_new(url)
@@ -459,6 +514,9 @@ def applyNewLanguage():
     global lbl_donate
     global lbl_release
 
+    global lbl_verbose
+    global chk_verbose
+
     lbl_homepage.config(text=translate[language_code]["homepage"])
     lbl_language.config(text=translate[language_code]["language"])
 
@@ -491,12 +549,18 @@ def applyNewLanguage():
     lbl_donate.config(text=translate[language_code]["donate"])
     lbl_release.config(text=translate[language_code]["release"])
 
+    lbl_verbose.config(text=translate[language_code]["verbose"])
+    chk_verbose.config(text=translate[language_code]["enable"])
+
     global btn_run
     global btn_save
     global btn_exit
+    global btn_restore_defaults
+
     btn_run.config(text=translate[language_code]["run"])
     btn_save.config(text=translate[language_code]["save"])
     btn_exit.config(text=translate[language_code]["exit"])
+    btn_restore_defaults.config(text=translate[language_code]["restore_defaults"])
 
 def btn_exit_clicked():
     root.destroy()
@@ -536,24 +600,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     cc_ccv = ""
 
     # output config:
-    print("homepage", config_dict["homepage"])
-    print("adult_picker", config_dict["adult_picker"])
-    print("force_adult_picker", config_dict["force_adult_picker"])
-    print("book_now_time", config_dict["book_now_time"])
-    print("book_now_time_alt", config_dict["book_now_time_alt"])
-    print("user_name", config_dict["user_name"])
-    print("user_gender", config_dict["user_gender"])
-    print("user_phone", config_dict["user_phone"])
-    print("user_email", config_dict["user_email"])
-
-    print("cardholder_name", config_dict["cardholder_name"])
-    print("cardholder_email", config_dict["cardholder_email"])
-    print("cc_number", config_dict["cc_number"])
-    print("cc_exp", config_dict["cc_exp"])
-    print("cc_ccv", config_dict["cc_ccv"])
-
-    print("cc_auto_submit", config_dict["cc_auto_submit"])
-
+    print("config:", config_dict)
 
     # output to GUI.
     row_count = 0
@@ -577,7 +624,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_homepage
     txt_homepage_value = StringVar(frame_group_header, value=config_dict["homepage"])
-    txt_homepage = Entry(frame_group_header, width=20, textvariable = txt_homepage_value)
+    txt_homepage = Entry(frame_group_header, width=30, textvariable = txt_homepage_value)
     txt_homepage.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
@@ -589,7 +636,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_adult_picker
     txt_adult_picker_value = StringVar(frame_group_header, value=config_dict["adult_picker"])
-    txt_adult_picker = Entry(frame_group_header, width=20, textvariable = txt_adult_picker_value)
+    txt_adult_picker = Entry(frame_group_header, width=30, textvariable = txt_adult_picker_value)
     txt_adult_picker.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
@@ -617,7 +664,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_book_now_time
     txt_book_now_time_value = StringVar(frame_group_header, value=config_dict["book_now_time"])
-    txt_book_now_time = Entry(frame_group_header, width=20, textvariable = txt_book_now_time_value)
+    txt_book_now_time = Entry(frame_group_header, width=30, textvariable = txt_book_now_time_value)
     txt_book_now_time.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
@@ -629,7 +676,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_book_now_time_alt
     txt_book_now_time_alt_value = StringVar(frame_group_header, value=config_dict["book_now_time_alt"])
-    txt_book_now_time_alt = Entry(frame_group_header, width=20, textvariable = txt_book_now_time_alt_value)
+    txt_book_now_time_alt = Entry(frame_group_header, width=30, textvariable = txt_book_now_time_alt_value)
     txt_book_now_time_alt.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
@@ -662,7 +709,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_user_name
     txt_user_name_value = StringVar(frame_user_profile, value=config_dict["user_name"])
-    txt_user_name = Entry(frame_user_profile, width=20, textvariable = txt_user_name_value)
+    txt_user_name = Entry(frame_user_profile, width=30, textvariable = txt_user_name_value)
     txt_user_name.grid(column=1, row=user_profile_row_count, sticky = W)
 
     user_profile_row_count+=1
@@ -671,11 +718,6 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     global lbl_user_gender
     lbl_user_gender = Label(frame_user_profile, text=translate[language_code]["user_gender"])
     lbl_user_gender.grid(column=0, row=user_profile_row_count, sticky = E)
-
-    global txt_user_gender
-    txt_user_gender_value = StringVar(frame_user_profile, value=config_dict["user_name"])
-    txt_user_gender = Entry(frame_user_profile, width=20, textvariable = txt_user_gender_value)
-    txt_user_gender.grid(column=1, row=user_profile_row_count, sticky = W)
 
     global combo_user_gender
     combo_user_gender = ttk.Combobox(frame_user_profile, state="readonly")
@@ -694,7 +736,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_user_phone
     txt_user_phone_value = StringVar(frame_user_profile, value=config_dict["user_phone"])
-    txt_user_phone = Entry(frame_user_profile, width=20, textvariable = txt_user_phone_value)
+    txt_user_phone = Entry(frame_user_profile, width=30, textvariable = txt_user_phone_value)
     txt_user_phone.grid(column=1, row=user_profile_row_count, sticky = W)
 
     user_profile_row_count+=1
@@ -706,7 +748,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_user_email
     txt_user_email_value = StringVar(frame_user_profile, value=config_dict["user_email"])
-    txt_user_email = Entry(frame_user_profile, width=20, textvariable = txt_user_email_value)
+    txt_user_email = Entry(frame_user_profile, width=30, textvariable = txt_user_email_value)
     txt_user_email.grid(column=1, row=user_profile_row_count, sticky = W)
 
     user_profile_row_count+=1
@@ -739,7 +781,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     global txt_cardholder_name
     global txt_cardholder_name_value
     txt_cardholder_name_value = StringVar(frame_cc, value=config_dict["cardholder_name"])
-    txt_cardholder_name = Entry(frame_cc, width=20, textvariable = txt_cardholder_name_value)
+    txt_cardholder_name = Entry(frame_cc, width=30, textvariable = txt_cardholder_name_value)
     txt_cardholder_name.grid(column=1, row=cc_row_count, sticky = W)
 
     cc_row_count+=1
@@ -750,7 +792,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_cardholder_email
     txt_cardholder_email_value = StringVar(frame_cc, value=config_dict["cardholder_email"])
-    txt_cardholder_email = Entry(frame_cc, width=20, textvariable = txt_cardholder_email_value)
+    txt_cardholder_email = Entry(frame_cc, width=30, textvariable = txt_cardholder_email_value)
     txt_cardholder_email.grid(column=1, row=cc_row_count, sticky = W)
 
     cc_row_count+=1
@@ -761,7 +803,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_card_number
     txt_card_number_value = StringVar(frame_cc, value=config_dict["cc_number"])
-    txt_card_number = Entry(frame_cc, width=20, textvariable = txt_card_number_value)
+    txt_card_number = Entry(frame_cc, width=30, textvariable = txt_card_number_value)
     txt_card_number.grid(column=1, row=cc_row_count, sticky = W)
 
     cc_row_count+=1
@@ -772,7 +814,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     global txt_card_exp
     txt_card_exp_value = StringVar(frame_cc, value=config_dict["cc_exp"])
-    txt_card_exp = Entry(frame_cc, width=20, textvariable = txt_card_exp_value)
+    txt_card_exp = Entry(frame_cc, width=30, textvariable = txt_card_exp_value)
     txt_card_exp.grid(column=1, row=cc_row_count, sticky = W)
 
     cc_row_count+=1
@@ -784,7 +826,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     global txt_card_ccv
     global txt_card_ccv_value
     txt_card_ccv_value = StringVar(frame_cc, value=config_dict["cc_ccv"])
-    txt_card_ccv = Entry(frame_cc, width=20, textvariable = txt_card_ccv_value)
+    txt_card_ccv = Entry(frame_cc, width=30, textvariable = txt_card_ccv_value)
     txt_card_ccv.grid(column=1, row=cc_row_count, sticky = W)
 
     cc_row_count+=1
@@ -830,7 +872,7 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     lbl_language.grid(column=0, row=group_row_count, sticky = E)
 
     #global txt_language
-    #txt_language = Entry(root, width=20, textvariable = StringVar(root, value=language))
+    #txt_language = Entry(root, width=30, textvariable = StringVar(root, value=language))
     #txt_language.grid(column=1, row=group_row_count)
 
     global combo_language
@@ -840,6 +882,21 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     combo_language.set(language)
     combo_language.bind("<<ComboboxSelected>>", callbackLanguageOnChange)
     combo_language.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    global lbl_verbose
+    lbl_verbose = Label(frame_group_header, text=translate[language_code]['verbose'])
+    lbl_verbose.grid(column=0, row=group_row_count, sticky = E)
+
+    global chk_state_verbose
+    chk_state_verbose = BooleanVar()
+    chk_state_verbose.set(config_dict['advanced']["verbose"])
+
+    global chk_verbose
+    chk_verbose = Checkbutton(frame_group_header, text=translate[language_code]['enable'], variable=chk_state_verbose)
+    chk_verbose.grid(column=1, row=group_row_count, sticky = W)
+
 
     frame_group_header.grid(column=0, row=row_count, padx=UI_PADDING_X)
 
@@ -904,36 +961,36 @@ def AboutTab(root, language_code):
 
     frame_group_header.grid(column=0, row=row_count)
 
-def get_action_bar(root,language_code):
+def get_action_bar(root, language_code):
     frame_action = Frame(root)
 
     global btn_run
     global btn_save
     global btn_exit
+    global btn_restore_defaults
 
-    btn_run = ttk.Button(frame_action, text=translate[language_code]['run'], command=btn_run_clicked)
+    btn_run = ttk.Button(frame_action, text=translate[language_code]['run'], command= lambda: btn_run_clicked(language_code))
     btn_run.grid(column=0, row=0)
 
-    btn_save = ttk.Button(frame_action, text=translate[language_code]['save'], command=btn_save_clicked)
+    btn_save = ttk.Button(frame_action, text=translate[language_code]['save'], command= lambda: btn_save_clicked(language_code) )
     btn_save.grid(column=1, row=0)
 
     btn_exit = ttk.Button(frame_action, text=translate[language_code]['exit'], command=btn_exit_clicked)
-    btn_exit.grid(column=3, row=0)
+    btn_exit.grid(column=2, row=0)
+
+    btn_restore_defaults = ttk.Button(frame_action, text=translate[language_code]['restore_defaults'], command= lambda: btn_restore_defaults_clicked(language_code))
+    btn_restore_defaults.grid(column=3, row=0)
 
     return frame_action
 
 
-def main():
-    global translate
-    translate = load_translate()
+def clearFrame(frame):
+    # destroy all widgets from frame
+    for widget in frame.winfo_children():
+       widget.destroy()
 
-    global config_filepath
-    global config_dict
-    config_filepath, config_dict = load_json()
-
-    global root
-    root = Tk()
-    root.title(CONST_APP_VERSION)
+def load_GUI(root, config_dict):
+    clearFrame(root)
 
     language_code="en_us"
     if not config_dict is None:
@@ -958,15 +1015,31 @@ def main():
     frame_action = get_action_bar(root,language_code)
     frame_action.grid(column=0, row=row_count)
 
-    global UI_PADDING_X
-    UI_PADDING_X = 15
-
-    GUI_SIZE_WIDTH = 460
-    GUI_SIZE_HEIGHT = 560
-
     PreferenctTab(tab1, config_dict, language_code, UI_PADDING_X)
     AdvancedTab(tab2, config_dict, language_code, UI_PADDING_X)
     AboutTab(tab3, language_code)
+
+def main():
+    global translate
+    # only need to load translate once.
+    translate = load_translate()
+
+    global config_filepath
+    global config_dict
+    # only need to load json file once.
+    config_filepath, config_dict = load_json()
+
+    global root
+    root = Tk()
+    root.title(CONST_APP_VERSION)
+
+    global UI_PADDING_X
+    UI_PADDING_X = 15
+
+    load_GUI(root, config_dict)
+
+    GUI_SIZE_WIDTH = 460
+    GUI_SIZE_HEIGHT = 560
 
     GUI_SIZE_MACOS = str(GUI_SIZE_WIDTH) + 'x' + str(GUI_SIZE_HEIGHT)
     GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-60) + 'x' + str(GUI_SIZE_HEIGHT-90)
