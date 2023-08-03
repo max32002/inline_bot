@@ -17,13 +17,16 @@ import sys
 import platform
 import webbrowser
 import base64
+import time
 import threading
 import subprocess
 import json
 
-CONST_APP_VERSION = "MaxinlineBot (2023.05.31)"
+CONST_APP_VERSION = "MaxinlineBot (2023.07.01)"
 
 CONST_MAXBOT_CONFIG_FILE = "settings.json"
+CONST_MAXBOT_LAST_URL_FILE = "MAXBOT_LAST_URL.txt"
+CONST_MAXBOT_INT28_FILE = "MAXBOT_INT28_IDLE.txt"
 
 CONST_HOMEPAGE_DEFAULT = "https://inline.app/"
 CONST_GENDER_DEFAULT = '小姐'
@@ -67,9 +70,19 @@ def load_translate():
     en_us["auto_submit"] = "Auto submit"
 
     en_us["verbose"] = 'Verbose mode'
+    en_us["running_status"] = 'Running Status'
+    en_us["running_url"] = 'Running URL'
+    en_us["status_idle"] = 'Idle'
+    en_us["status_paused"] = 'Paused'
+    en_us["status_enabled"] = 'Enabled'
+    en_us["status_running"] = 'Running'
+
+    en_us["idle"] = 'Idle'
+    en_us["resume"] = 'Resume'
 
     en_us["preference"] = 'Preference'
     en_us["advanced"] = 'Advanced'
+    en_us["runtime"] = 'Runtime'
     en_us["about"] = 'About'
 
     en_us["run"] = 'Run'
@@ -110,9 +123,19 @@ def load_translate():
     zh_tw["auto_submit"] = "自動「確認訂位」"
 
     zh_tw["verbose"] = '輸出詳細除錯訊息'
+    zh_tw["running_status"] = '執行狀態'
+    zh_tw["running_url"] = '執行網址'
+    zh_tw["status_idle"] = '閒置中'
+    zh_tw["status_paused"] = '已暫停'
+    zh_tw["status_enabled"] = '已啟用'
+    zh_tw["status_running"] = '執行中'
+
+    zh_tw["idle"] = '暫停搶票'
+    zh_tw["resume"] = '接續搶票'
 
     zh_tw["preference"] = '偏好設定'
     zh_tw["advanced"] = '進階設定'
+    zh_tw["runtime"] = '執行階段'
     zh_tw["about"] = '關於'
 
     zh_tw["run"] = '搶票'
@@ -153,17 +176,27 @@ def load_translate():
     zh_cn["auto_submit"] = "自动“确认订位”"
 
     zh_cn["verbose"] = '输出详细除错讯息'
+    zh_cn["running_status"] = '執行狀態'
+    zh_cn["running_url"] = '執行網址'
+    zh_cn["status_idle"] = '閒置中'
+    zh_cn["status_paused"] = '已暫停'
+    zh_cn["status_enabled"] = '已启用'
+    zh_cn["status_running"] = '執行中'
+
+    zh_cn["idle"] = '暂停抢票'
+    zh_cn["resume"] = '接续抢票'
 
     zh_cn["preference"] = '偏好设定'
     zh_cn["advanced"] = '進階設定'
+    zh_cn["runtime"] = '运行'
     zh_cn["about"] = '关于'
-    zh_cn["copy"] = '复制'
-    zh_cn["restore_defaults"] = '恢复默认值'
-    zh_cn["done"] = '完成'
 
     zh_cn["run"] = '抢票'
     zh_cn["save"] = '存档'
     zh_cn["exit"] = '关闭'
+    zh_cn["copy"] = '复制'
+    zh_cn["restore_defaults"] = '恢复默认值'
+    zh_cn["done"] = '完成'
 
     zh_cn["maxbot_slogan"] = 'MaxinlineBot 是一个免费的开源机器人程序。\n祝您预订成功。'
     zh_cn["donate"] = '打赏'
@@ -185,20 +218,30 @@ def load_translate():
     ja_jp["user_name"] = "予約者名"
     ja_jp["user_gender"] = "性別"
     ja_jp["user_tel"] = "携帯電話番号"
-    ja_jp["user_email"] = "予約担当者のメールアドレス"
+    ja_jp["user_email"] = "予約担当者Email"
 
     ja_jp["credit_card_holder"] = "クレジット カード所有者"
     ja_jp["cardholder_name"] = "所有者名"
-    zh_cn["cardholder_email"] = "所有者Email"
+    ja_jp["cardholder_email"] = "所有者Email"
     ja_jp["card_number"] = "番号"
     ja_jp["card_exp"] = "Exp (MM/YY)"
     ja_jp["card_ccv"] = "ccv"
     ja_jp["auto_submit"] = "自動送信フォーム"
 
     ja_jp["verbose"] = '詳細モード'
+    ja_jp["running_status"] = 'スターテス'
+    ja_jp["running_url"] = '現在の URL'
+    ja_jp["status_idle"] = '閒置中'
+    ja_jp["status_paused"] = '一時停止'
+    ja_jp["status_enabled"] = '有効'
+    ja_jp["status_running"] = 'ランニング'
+
+    ja_jp["idle"] = 'アイドル'
+    ja_jp["resume"] = '再開する'
 
     ja_jp["preference"] = '設定'
     ja_jp["advanced"] = '高度な設定'
+    ja_jp["runtime"] = 'ランタイム'
     ja_jp["about"] = '情報'
 
     ja_jp["run"] = 'チケットを取る'
@@ -232,6 +275,8 @@ def get_app_root():
 def get_default_config():
     config_dict = {}
     config_dict["homepage"] = CONST_HOMEPAGE_DEFAULT
+    config_dict["browser"] = "chrome"
+    config_dict["language"] = "English"
     config_dict["adult_picker"] = "2"
     config_dict["force_adult_picker"] = True
     config_dict["book_now_time"] = ""
@@ -249,15 +294,26 @@ def get_default_config():
     config_dict['cc_auto_submit'] = False
 
     config_dict['advanced']={}
+    config_dict["advanced"]["adblock_plus_enable"] = False
+    config_dict["advanced"]["headless"] = False
     config_dict["advanced"]["verbose"] = False
 
     config_dict["webdriver_type"] = CONST_WEBDRIVER_TYPE_UC
 
     return config_dict
 
+def read_last_url_from_file():
+    ret = ""
+    if os.path.exists(CONST_MAXBOT_LAST_URL_FILE):
+        with open(CONST_MAXBOT_LAST_URL_FILE, "r") as text_file:
+            ret = text_file.readline()
+    return ret
+
 def load_json():
     app_root = get_app_root()
-    config_filepath = os.path.join(app_root, 'settings.json')
+
+    # overwrite config path.
+    config_filepath = os.path.join(app_root, CONST_MAXBOT_CONFIG_FILE)
 
     config_dict = None
     if os.path.isfile(config_filepath):
@@ -280,6 +336,20 @@ def btn_restore_defaults_clicked(language_code):
     global root
     load_GUI(root, config_dict)
 
+def btn_idle_clicked(language_code):
+    app_root = get_app_root()
+    idle_filepath = os.path.join(app_root, CONST_MAXBOT_INT28_FILE)
+    with open(CONST_MAXBOT_INT28_FILE, "w") as text_file:
+        text_file.write("")
+    update_maxbot_runtime_status()
+
+def btn_resume_clicked(language_code):
+    app_root = get_app_root()
+    idle_filepath = os.path.join(app_root, CONST_MAXBOT_INT28_FILE)
+    for i in range(10):
+        force_remove_file(idle_filepath)
+    update_maxbot_runtime_status()
+
 def btn_save_clicked(language_code):
     btn_save_act(language_code)
 
@@ -296,6 +366,7 @@ def btn_save_act(language_code, slience_mode=False):
 
     # read user input
     global txt_homepage
+    global combo_browser
     global combo_language
 
     global txt_adult_picker
@@ -327,6 +398,13 @@ def btn_save_act(language_code, slience_mode=False):
         else:
             #config_dict["homepage"] = combo_homepage.get().strip()
             config_dict["homepage"] = txt_homepage.get().strip()
+
+    if is_all_data_correct:
+        if combo_browser.get().strip()=="":
+            is_all_data_correct = False
+            messagebox.showerror("Error", "Please select a browser: chrome or firefox")
+        else:
+            config_dict["browser"] = combo_browser.get().strip()
 
     if is_all_data_correct:
         if combo_language.get().strip()=="":
@@ -486,6 +564,7 @@ def applyNewLanguage():
     language_code=get_language_code_by_name(new_language)
 
     global lbl_homepage
+    global lbl_browser
     global lbl_language
 
     global lbl_adult_picker
@@ -520,7 +599,11 @@ def applyNewLanguage():
     global lbl_verbose
     global chk_verbose
 
+    global lbl_maxbot_status
+    global lbl_maxbot_last_url
+
     lbl_homepage.config(text=translate[language_code]["homepage"])
+    lbl_browser.config(text=translate[language_code]["browser"])
     lbl_language.config(text=translate[language_code]["language"])
 
     lbl_adult_picker.config(text=translate[language_code]["party_size"])
@@ -545,7 +628,8 @@ def applyNewLanguage():
 
     tabControl.tab(0, text=translate[language_code]["preference"])
     tabControl.tab(1, text=translate[language_code]["advanced"])
-    tabControl.tab(2, text=translate[language_code]["about"])
+    tabControl.tab(2, text=translate[language_code]["runtime"])
+    tabControl.tab(3, text=translate[language_code]["about"])
 
     lbl_slogan.config(text=translate[language_code]["maxbot_slogan"])
     lbl_help.config(text=translate[language_code]["help"])
@@ -555,15 +639,24 @@ def applyNewLanguage():
     lbl_verbose.config(text=translate[language_code]["verbose"])
     chk_verbose.config(text=translate[language_code]["enable"])
 
+    lbl_maxbot_status.config(text=translate[language_code]["running_status"])
+    lbl_maxbot_last_url.config(text=translate[language_code]["running_url"])
+
     global btn_run
     global btn_save
     global btn_exit
     global btn_restore_defaults
 
+    global btn_idle
+    global btn_resume
+
     btn_run.config(text=translate[language_code]["run"])
     btn_save.config(text=translate[language_code]["save"])
     btn_exit.config(text=translate[language_code]["exit"])
     btn_restore_defaults.config(text=translate[language_code]["restore_defaults"])
+
+    btn_idle.config(text=translate[language_code]["idle"])
+    btn_resume.config(text=translate[language_code]["resume"])
 
 def btn_exit_clicked():
     root.destroy()
@@ -855,20 +948,22 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
 
 def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
-    # read config.
-
-    language = "English"
-    if u'language' in config_dict:
-        language = config_dict["language"]
-
-    # for advanced
-    print("==[advanced]==")
-    print("language", language)
-
     row_count = 0
 
     frame_group_header = Frame(root)
     group_row_count = 0
+
+    global lbl_browser
+    lbl_browser = Label(frame_group_header, text=translate[language_code]['browser'])
+    lbl_browser.grid(column=0, row=group_row_count, sticky = E)
+
+    global combo_browser
+    combo_browser = ttk.Combobox(frame_group_header, state="readonly", width=30)
+    combo_browser['values']= ("chrome","firefox","edge","safari","brave")
+    combo_browser.set(config_dict['browser'])
+    combo_browser.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
 
     global lbl_language
     lbl_language = Label(frame_group_header, text=translate[language_code]['language'])
@@ -882,7 +977,7 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     combo_language = ttk.Combobox(frame_group_header, state="readonly")
     combo_language['values']= ("English","繁體中文","簡体中文","日本語")
     #combo_language.current(0)
-    combo_language.set(language)
+    combo_language.set(config_dict['language'])
     combo_language.bind("<<ComboboxSelected>>", callbackLanguageOnChange)
     combo_language.grid(column=1, row=group_row_count, sticky = W)
 
@@ -902,6 +997,91 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
 
 
     frame_group_header.grid(column=0, row=row_count, padx=UI_PADDING_X)
+
+
+def settings_timer():
+    while True:
+        update_maxbot_runtime_status()
+        time.sleep(0.6)
+
+def update_maxbot_runtime_status():
+    is_paused = False
+    if os.path.exists(CONST_MAXBOT_INT28_FILE):
+        is_paused = True
+
+    try:
+        global combo_language
+        new_language = combo_language.get().strip()
+        language_code=get_language_code_by_name(new_language)
+
+        global lbl_maxbot_status_data
+        maxbot_status = translate[language_code]['status_enabled']
+        if is_paused:
+            maxbot_status = translate[language_code]['status_paused']
+
+        lbl_maxbot_status_data.config(text=maxbot_status)
+
+        global btn_idle
+        global btn_resume
+
+        if not is_paused:
+            btn_idle.grid(column=1, row=0)
+            btn_resume.grid_forget()
+        else:
+            btn_resume.grid(column=2, row=0)
+            btn_idle.grid_forget()
+
+        global lbl_maxbot_last_url_data
+        last_url = read_last_url_from_file()
+        if len(last_url) > 60:
+            last_url=last_url[:60]+"..."
+        lbl_maxbot_last_url_data.config(text=last_url)
+    except Exception as exc:
+        pass
+
+
+def RuntimeTab(root, config_dict, language_code, UI_PADDING_X):
+    row_count = 0
+
+    frame_group_header = Frame(root)
+    group_row_count = 0
+
+    maxbot_status = ""
+    global lbl_maxbot_status
+    lbl_maxbot_status = Label(frame_group_header, text=translate[language_code]['running_status'])
+    lbl_maxbot_status.grid(column=0, row=group_row_count, sticky = E)
+
+
+    frame_maxbot_interrupt = Frame(frame_group_header)
+
+    global lbl_maxbot_status_data
+    lbl_maxbot_status_data = Label(frame_maxbot_interrupt, text=maxbot_status)
+    lbl_maxbot_status_data.grid(column=0, row=group_row_count, sticky = W)
+
+    global btn_idle
+    global btn_resume
+
+    btn_idle = ttk.Button(frame_maxbot_interrupt, text=translate[language_code]['idle'], command= lambda: btn_idle_clicked(language_code) )
+    btn_idle.grid(column=1, row=0)
+
+    btn_resume = ttk.Button(frame_maxbot_interrupt, text=translate[language_code]['resume'], command= lambda: btn_resume_clicked(language_code))
+    btn_resume.grid(column=2, row=0)
+
+    frame_maxbot_interrupt.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count +=1
+
+    global lbl_maxbot_last_url
+    lbl_maxbot_last_url = Label(frame_group_header, text=translate[language_code]['running_url'])
+    lbl_maxbot_last_url.grid(column=0, row=group_row_count, sticky = E)
+
+    last_url = ""
+    global lbl_maxbot_last_url_data
+    lbl_maxbot_last_url_data = Label(frame_group_header, text=last_url)
+    lbl_maxbot_last_url_data.grid(column=1, row=group_row_count, sticky = W)
+
+    frame_group_header.grid(column=0, row=row_count, padx=UI_PADDING_X)
+    update_maxbot_runtime_status()
 
 def AboutTab(root, language_code):
     row_count = 0
@@ -1009,7 +1189,9 @@ def load_GUI(root, config_dict):
     tab2 = Frame(tabControl)
     tabControl.add(tab2, text=translate[language_code]['advanced'])
     tab3 = Frame(tabControl)
-    tabControl.add(tab3, text=translate[language_code]['about'])
+    tabControl.add(tab3, text=translate[language_code]['runtime'])
+    tab4 = Frame(tabControl)
+    tabControl.add(tab4, text=translate[language_code]['about'])
     tabControl.grid(column=0, row=row_count)
     tabControl.select(tab1)
 
@@ -1020,7 +1202,8 @@ def load_GUI(root, config_dict):
 
     PreferenctTab(tab1, config_dict, language_code, UI_PADDING_X)
     AdvancedTab(tab2, config_dict, language_code, UI_PADDING_X)
-    AboutTab(tab3, language_code)
+    RuntimeTab(tab3, config_dict, language_code, UI_PADDING_X)
+    AboutTab(tab4, language_code)
 
 def main():
     global translate
@@ -1078,7 +1261,23 @@ def main():
         root.call('wm', 'iconphoto', root._w, logo)
     os.remove(icon_filepath)
 
+    threading.Thread(target=settings_timer, daemon=True).start()
     root.mainloop()
 
+def force_remove_file(filepath):
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception as exc:
+            pass
+
+def clean_tmp_file():
+    remove_file_list = [CONST_MAXBOT_LAST_URL_FILE
+        ,CONST_MAXBOT_INT28_FILE
+    ]
+    for filepath in remove_file_list:
+        force_remove_file(filepath)
+
 if __name__ == "__main__":
+    clean_tmp_file()
     main()
