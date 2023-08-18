@@ -39,13 +39,13 @@ ssl._create_default_https_context = ssl._create_unverified_context
 import argparse
 import chromedriver_autoinstaller
 
-CONST_APP_VERSION = "MaxinlineBot (2023.07.01)"
+CONST_APP_VERSION = "MaxinlineBot (2023.08.01)"
 
 CONST_MAXBOT_CONFIG_FILE = 'settings.json'
 CONST_MAXBOT_LAST_URL_FILE = "MAXBOT_LAST_URL.txt"
 CONST_MAXBOT_INT28_FILE = "MAXBOT_INT28_IDLE.txt"
 
-CONST_HOMEPAGE_DEFAULT = "https://inline.app/"
+CONST_HOMEPAGE_DEFAULT = "https://inline.app/zh/?language=zh-tw"
 
 CONST_CHROME_VERSION_NOT_MATCH_EN="Please download the WebDriver version to match your browser version."
 CONST_CHROME_VERSION_NOT_MATCH_TW="請下載與您瀏覽器相同版本的WebDriver版本，或更新您的瀏覽器版本。"
@@ -213,8 +213,8 @@ def load_chromdriver_normal(config_dict, driver_type):
         os.mkdir(webdriver_path)
 
     if not os.path.exists(chromedriver_path):
-        print("WebDriver not exist, try to download...")
-        chromedriver_autoinstaller.install(path="webdriver", make_version_dir=False)
+        print("WebDriver not exist, try to download to:", webdriver_path)
+        chromedriver_autoinstaller.install(path=webdriver_path, make_version_dir=False)
 
     if not os.path.exists(chromedriver_path):
         print("Please download chromedriver and extract zip to webdriver folder from this url:")
@@ -238,19 +238,27 @@ def load_chromdriver_normal(config_dict, driver_type):
                 print(CONST_CHROME_VERSION_NOT_MATCH_EN)
                 print(CONST_CHROME_VERSION_NOT_MATCH_TW)
 
-                # remove exist download again.
+                # remove exist chromedriver, download again.
                 try:
+                    print("Deleting exist and download ChromeDriver again.")
                     os.unlink(chromedriver_path)
-                except PermissionError:
+                except Exception as exc2:
+                    print(exc2)
                     pass
-                except FileNotFoundError:
-                    pass
-                chromedriver_autoinstaller.install(path="webdriver", make_version_dir=False)
+
+                chromedriver_autoinstaller.install(path=webdriver_path, make_version_dir=False)
                 chrome_service = Service(chromedriver_path)
                 try:
+                    chrome_options = get_chrome_options(webdriver_path, config_dict["advanced"]["adblock_plus_enable"], browser=config_dict["browser"], headless=config_dict["advanced"]["headless"])
                     driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
                 except Exception as exc2:
-                    pass
+                    print("Selenium 4.11.0 Release with Chrome For Testing Browser.")
+                    try:
+                        chrome_options = get_chrome_options(webdriver_path, config_dict["advanced"]["adblock_plus_enable"], browser=config_dict["browser"], headless=config_dict["advanced"]["headless"])
+                        driver = webdriver.Chrome(service=Service(), options=chrome_options)
+                    except Exception as exc3:
+                        print(exc3)
+                        pass
 
 
     if driver_type=="stealth":
@@ -269,7 +277,6 @@ def load_chromdriver_normal(config_dict, driver_type):
     return driver
 
 def clean_uc_exe_cache():
-    is_cache_exist = False
     exe_name = "chromedriver%s"
 
     platform = sys.platform
@@ -280,6 +287,7 @@ def clean_uc_exe_cache():
     if platform.endswith("darwin"):
         exe_name %= ""
 
+    d = ""
     if platform.endswith("win32"):
         d = "~/appdata/roaming/undetected_chromedriver"
     elif "LAMBDA_TASK_ROOT" in os.environ:
@@ -292,39 +300,21 @@ def clean_uc_exe_cache():
         d = "~/.undetected_chromedriver"
     data_path = os.path.abspath(os.path.expanduser(d))
 
+    is_cache_exist = False
     p = pathlib.Path(data_path)
     files = list(p.rglob("*chromedriver*?"))
     for file in files:
-        is_cache_exist = True
-        try:
-            os.unlink(str(file))
-        except PermissionError:
-            pass
-        except FileNotFoundError:
-            pass
+        if os.path.exists(str(file)):
+            is_cache_exist = True
+            try:
+                os.unlink(str(file))
+            except Exception as exc2:
+                print(exc2)
+                pass
 
     return is_cache_exist
 
-def load_chromdriver_uc(config_dict):
-    import undetected_chromedriver as uc
-
-    show_debug_message = True       # debug.
-    show_debug_message = False      # online
-
-    if config_dict["advanced"]["verbose"]:
-        show_debug_message = True
-
-    Root_Dir = get_app_root()
-    webdriver_path = os.path.join(Root_Dir, "webdriver")
-    chromedriver_path = get_chromedriver_path(webdriver_path)
-
-    if not os.path.exists(webdriver_path):
-        os.mkdir(webdriver_path)
-
-    if not os.path.exists(chromedriver_path):
-        print("WebDriver not exist, try to download...")
-        chromedriver_autoinstaller.install(path="webdriver", make_version_dir=False)
-
+def get_uc_options(uc, config_dict, webdriver_path):
     options = uc.ChromeOptions()
     options.page_load_strategy = 'eager'
     #options.page_load_strategy = 'none'
@@ -360,12 +350,38 @@ def load_chromdriver_uc(config_dict):
         if os.path.exists(brave_path):
             options.binary_location = brave_path
 
+    return options
+
+def load_chromdriver_uc(config_dict):
+    import undetected_chromedriver as uc
+
+    show_debug_message = True       # debug.
+    show_debug_message = False      # online
+
+    if config_dict["advanced"]["verbose"]:
+        show_debug_message = True
+
+    Root_Dir = get_app_root()
+    webdriver_path = os.path.join(Root_Dir, "webdriver")
+    chromedriver_path = get_chromedriver_path(webdriver_path)
+
+    if not os.path.exists(webdriver_path):
+        os.mkdir(webdriver_path)
+
+    if not os.path.exists(chromedriver_path):
+        print("ChromeDriver not exist, try to download to:", webdriver_path)
+        chromedriver_autoinstaller.install(path=webdriver_path, make_version_dir=False)
+    else:
+        print("ChromeDriver exist:", chromedriver_path)
+
+
     driver = None
     if os.path.exists(chromedriver_path):
         # use chromedriver_autodownload instead of uc auto download.
         is_cache_exist = clean_uc_exe_cache()
 
         try:
+            options = get_uc_options(uc, config_dict, webdriver_path)
             driver = uc.Chrome(driver_executable_path=chromedriver_path, options=options, headless=config_dict["advanced"]["headless"])
         except Exception as exc:
             print(exc)
@@ -381,16 +397,18 @@ def load_chromdriver_uc(config_dict):
 
             # remove exist chromedriver, download again.
             try:
+                print("Deleting exist and download ChromeDriver again.")
                 os.unlink(chromedriver_path)
-            except PermissionError:
-                pass
-            except FileNotFoundError:
+            except Exception as exc2:
+                print(exc2)
                 pass
 
-            chromedriver_autoinstaller.install(path="webdriver", make_version_dir=False)
+            chromedriver_autoinstaller.install(path=webdriver_path, make_version_dir=False)
             try:
+                options = get_uc_options(uc, config_dict, webdriver_path)
                 driver = uc.Chrome(driver_executable_path=chromedriver_path, options=options, headless=config_dict["advanced"]["headless"])
             except Exception as exc2:
+                print(exc2)
                 pass
     else:
         print("WebDriver not found at path:", chromedriver_path)
@@ -426,6 +444,7 @@ def load_chromdriver_uc(config_dict):
 
     return driver
 
+
 def close_browser_tabs(driver):
     if not driver is None:
         try:
@@ -447,24 +466,7 @@ def get_driver_by_config(config_dict):
         # output config:
         print("maxbot app version", CONST_APP_VERSION)
         print("python version", platform.python_version())
-        print("homepage", config_dict["homepage"])
-        print("adult_picker", config_dict["adult_picker"])
-        print("book_now_time", config_dict["book_now_time"])
-        print("book_now_time_alt", config_dict["book_now_time_alt"])
-        
-        print("user_name", config_dict["user_name"])
-        print("user_gender", config_dict["user_gender"])
-        print("user_phone", config_dict["user_phone"])
-        print("user_email", config_dict["user_email"])
-
-        print("cardholder_name", config_dict["cardholder_name"])
-        print("cardholder_email", config_dict["cardholder_email"])
-        print("cc_number", config_dict["cc_number"])
-        print("cc_exp", config_dict["cc_exp"])
-        print("cc_ccv", config_dict["cc_ccv"])
-        
-        if 'cc_auto_submit' in config_dict:
-            print("cc_auto_submit", config_dict["cc_auto_submit"])
+        print("config", config_dict)
 
         homepage = config_dict["homepage"]
         adult_picker = config_dict["adult_picker"]
@@ -870,6 +872,9 @@ def fill_personal_info(driver, config_dict):
         ret = fill_text_by_default(el_form, By.ID, 'phone', user_phone)
         ret = fill_text_by_default(el_form, By.ID, 'email', user_email)
         
+        if(len(config_dict["booking_occasion"]) > 0):
+            my_css_selector = 'div[value="'+ config_dict["booking_occasion"] +'"][aria-checked="false"]'
+            is_occasion_clicked = force_press_button(driver, By.CSS_SELECTOR, my_css_selector)
         
         cardholder_name = config_dict["cardholder_name"]
         cardholder_email = config_dict["cardholder_email"]
@@ -1299,6 +1304,200 @@ def get_current_url(driver):
 
     return url, is_quit_bot
 
+def check_checkbox(driver, by, query):
+    show_debug_message = True       # debug.
+    show_debug_message = False      # online
+
+    agree_checkbox = None
+    try:
+        agree_checkbox = driver.find_element(by, query)
+    except Exception as exc:
+        if show_debug_message:
+            print(exc)
+        pass
+    is_checkbox_checked = False
+    if agree_checkbox is not None:
+        is_checkbox_checked = force_check_checkbox(driver, agree_checkbox)
+    return is_checkbox_checked
+
+def force_check_checkbox(driver, agree_checkbox):
+    is_finish_checkbox_click = False
+    if agree_checkbox is not None:
+        is_visible = False
+        try:
+            if agree_checkbox.is_enabled():
+                is_visible = True
+        except Exception as exc:
+            pass
+
+        if is_visible:
+            is_checkbox_checked = False
+            try:
+                if agree_checkbox.is_selected():
+                    is_checkbox_checked = True
+            except Exception as exc:
+                pass
+
+            if not is_checkbox_checked:
+                #print('send check to checkbox')
+                try:
+                    agree_checkbox.click()
+                    is_finish_checkbox_click = True
+                except Exception as exc:
+                    try:
+                        driver.execute_script("arguments[0].click();", agree_checkbox)
+                        is_finish_checkbox_click = True
+                    except Exception as exc:
+                        pass
+            else:
+                is_finish_checkbox_click = True
+    return is_finish_checkbox_click
+
+def force_press_button(driver, select_by, select_query, force_submit=True):
+    is_clicked = False
+    next_step_button = None
+    try:
+        next_step_button = driver.find_element(select_by ,select_query)
+        if not next_step_button is None:
+            if next_step_button.is_enabled():
+                next_step_button.click()
+                is_clicked = True
+    except Exception as exc:
+        #print("find %s clickable Exception:" % (select_query))
+        #print(exc)
+        pass
+
+        if force_submit:
+            if not next_step_button is None:
+                is_visible = False
+                try:
+                    if next_step_button.is_enabled():
+                        is_visible = True
+                except Exception as exc:
+                    pass
+
+                if is_visible:
+                    try:
+                        driver.set_script_timeout(1)
+                        driver.execute_script("arguments[0].click();", next_step_button)
+                        is_clicked = True
+                    except Exception as exc:
+                        pass
+    return is_clicked
+
+def assign_select_by_text(driver, by, query, val):
+    show_debug_message = True    # debug.
+    show_debug_message = False   # online
+
+    if val is None:
+        val = ""
+
+    is_text_sent = False
+    if len(val) > 0:
+        el_text = None
+        try:
+            el_text = driver.find_element(by, query)
+        except Exception as exc:
+            if show_debug_message:
+                print(exc)
+            pass
+
+        select_obj = None
+        if el_text is not None:
+            try:
+                if el_text.is_enabled() and el_text.is_displayed():
+                    select_obj = Select(el_text)
+                    if not select_obj is None:
+                        select_obj.select_by_visible_text(val)
+                        is_text_sent = True
+            except Exception as exc:
+                if show_debug_message:
+                    print(exc)
+                pass
+            
+    return is_text_sent
+
+def assign_text(driver, by, query, val, overwrite = False, submit=False):
+    show_debug_message = True    # debug.
+    show_debug_message = False   # online
+
+    if val is None:
+        val = ""
+
+    is_visible = False
+
+    if len(val) > 0:
+        el_text = None
+        try:
+            el_text = driver.find_element(by, query)
+        except Exception as exc:
+            if show_debug_message:
+                print(exc)
+            pass
+
+        if el_text is not None:
+            try:
+                if el_text.is_enabled() and el_text.is_displayed():
+                    is_visible = True
+            except Exception as exc:
+                if show_debug_message:
+                    print(exc)
+                pass
+
+    is_text_sent = False
+    if is_visible:
+        try:
+            inputed_text = el_text.get_attribute('value')
+            if inputed_text is not None:
+                is_do_keyin = False
+                if len(inputed_text) == 0:
+                    is_do_keyin = True
+                else:
+                    if inputed_text == val:
+                        is_text_sent = True
+                    else:
+                        if overwrite:
+                            el_text.clear()
+                            is_do_keyin = True
+
+                if is_do_keyin:
+                    el_text.click()
+                    el_text.send_keys(val)
+                    if submit:
+                        el_text.send_keys(Keys.ENTER)
+                    is_text_sent = True
+        except Exception as exc:
+            if show_debug_message:
+                print(exc)
+            pass
+            
+    return is_text_sent
+
+def inline_change_lang(driver, url):
+    show_debug_message = True    # debug.
+    show_debug_message = False   # online
+
+    el_current_lang = None
+    try:
+        my_css_selector = "div.current"
+        el_current_lang = driver.find_element(By.CSS_SELECTOR, my_css_selector)
+        if not el_current_lang is None:
+            if el_current_lang.is_displayed():
+                lang_name = el_current_lang.text
+                #print("current language name:", lang_name)
+                if len(lang_name) > 0:
+                    if lang_name != "繁中":
+                        new_url = url
+                        if "?language=" in new_url:
+                            new_url = new_url.split("?language=")[0]
+                        new_url = new_url + "?language=zh-tw"
+                        print("redirect to new zh-tw url:", new_url)
+                        driver.get(new_url)
+    except Exception as exc:
+        if show_debug_message:
+            print(exc)
+        pass
+
 def main(args):
     config_dict = get_config_dict(args)
 
@@ -1354,6 +1553,7 @@ def main(args):
         target_domain_list = ['//inline.app/booking/']
         for each_domain in target_domain_list:
             if each_domain in url:
+                inline_change_lang(driver, url)
                 current_progress_array = url.split('/')
                 current_progress_length = len(current_progress_array)
                 if current_progress_length >= 6:

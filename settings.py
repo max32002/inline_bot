@@ -22,14 +22,15 @@ import threading
 import subprocess
 import json
 
-CONST_APP_VERSION = "MaxinlineBot (2023.07.01)"
+CONST_APP_VERSION = "MaxinlineBot (2023.08.01)"
 
 CONST_MAXBOT_CONFIG_FILE = "settings.json"
 CONST_MAXBOT_LAST_URL_FILE = "MAXBOT_LAST_URL.txt"
 CONST_MAXBOT_INT28_FILE = "MAXBOT_INT28_IDLE.txt"
 
-CONST_HOMEPAGE_DEFAULT = "https://inline.app/"
+CONST_HOMEPAGE_DEFAULT = "https://inline.app/zh/?language=zh-tw"
 CONST_GENDER_DEFAULT = '小姐'
+CONST_OCCASION_DEFAULT = '朋友聚餐'
 
 URL_DONATE = 'https://max-everyday.com/about/#donate'
 URL_HELP = 'https://max-everyday.com/2022/09/inline-bot/'
@@ -60,6 +61,7 @@ def load_translate():
     en_us["user_gender"] = "Gender"
     en_us["user_tel"] = "Tel"
     en_us["user_email"] = "Email"
+    en_us["booking_occasion"] = "Occasion"
     
     en_us["credit_card_holder"] = "Credit Card Holder"
     en_us["cardholder_name"] = "Name"
@@ -113,6 +115,7 @@ def load_translate():
     zh_tw["user_gender"] = "性別"
     zh_tw["user_tel"] = "訂位人手機號碼"
     zh_tw["user_email"] = "訂位人Email"
+    zh_tw["booking_occasion"] = "用餐目的"
     
     zh_tw["credit_card_holder"] = "信用卡持有人"
     zh_tw["cardholder_name"] = "持卡人姓名"
@@ -166,6 +169,7 @@ def load_translate():
     zh_cn["user_gender"] = "性别"
     zh_cn["user_tel"] = "订位人手机号码"
     zh_cn["user_email"] = "订位人Email"
+    zh_cn["booking_occasion"] = "用餐目的"
 
     zh_cn["credit_card_holder"] = "信用卡持有人"
     zh_cn["cardholder_name"] = "持卡人姓名"
@@ -176,18 +180,18 @@ def load_translate():
     zh_cn["auto_submit"] = "自动“确认订位”"
 
     zh_cn["verbose"] = '输出详细除错讯息'
-    zh_cn["running_status"] = '執行狀態'
-    zh_cn["running_url"] = '執行網址'
-    zh_cn["status_idle"] = '閒置中'
-    zh_cn["status_paused"] = '已暫停'
+    zh_cn["running_status"] = '执行状态'
+    zh_cn["running_url"] = '执行网址'
+    zh_cn["status_idle"] = '闲置中'
+    zh_cn["status_paused"] = '已暂停'
     zh_cn["status_enabled"] = '已启用'
-    zh_cn["status_running"] = '執行中'
+    zh_cn["status_running"] = '执行中'
 
     zh_cn["idle"] = '暂停抢票'
     zh_cn["resume"] = '接续抢票'
 
     zh_cn["preference"] = '偏好设定'
-    zh_cn["advanced"] = '進階設定'
+    zh_cn["advanced"] = '进阶设定'
     zh_cn["runtime"] = '运行'
     zh_cn["about"] = '关于'
 
@@ -219,6 +223,7 @@ def load_translate():
     ja_jp["user_gender"] = "性別"
     ja_jp["user_tel"] = "携帯電話番号"
     ja_jp["user_email"] = "予約担当者Email"
+    ja_jp["booking_occasion"] = "機会"
 
     ja_jp["credit_card_holder"] = "クレジット カード所有者"
     ja_jp["cardholder_name"] = "所有者名"
@@ -285,6 +290,7 @@ def get_default_config():
     config_dict["user_gender"] = CONST_GENDER_DEFAULT
     config_dict["user_phone"] = ""
     config_dict["user_email"] = ""
+    config_dict["booking_occasion"] = CONST_OCCASION_DEFAULT
 
     config_dict["cardholder_name"] = ""
     config_dict["cardholder_email"] = ""
@@ -377,6 +383,7 @@ def btn_save_act(language_code, slience_mode=False):
     global combo_user_gender
     global txt_user_phone
     global txt_user_email
+    global combo_booking_occasion
 
     global txt_cardholder_name
     global txt_cardholder_email
@@ -387,6 +394,8 @@ def btn_save_act(language_code, slience_mode=False):
     global chk_state_cc_auto_submit
     global chk_state_force_adult_picker
     global chk_state_verbose
+
+    global tabControl
 
     is_all_data_correct = True
 
@@ -426,6 +435,8 @@ def btn_save_act(language_code, slience_mode=False):
     if is_all_data_correct:
         if txt_book_now_time.get().strip()=="":
             is_all_data_correct = False
+            tabControl.select(0)
+            txt_book_now_time.focus_set()
             messagebox.showerror("Error", "Please enter booking time")
         else:
             config_dict["book_now_time"] = txt_book_now_time.get().strip()
@@ -434,6 +445,8 @@ def btn_save_act(language_code, slience_mode=False):
     if is_all_data_correct:
         if txt_user_name.get().strip()=="":
             is_all_data_correct = False
+            tabControl.select(0)
+            txt_user_name.focus_set()
             messagebox.showerror("Error", "Please enter user name")
         else:
             config_dict["user_name"] = txt_user_name.get().strip()
@@ -441,6 +454,8 @@ def btn_save_act(language_code, slience_mode=False):
     if is_all_data_correct:
         if txt_user_phone.get().strip()=="":
             is_all_data_correct = False
+            tabControl.select(0)
+            txt_user_phone.focus_set()
             messagebox.showerror("Error", "Please enter user phone")
         else:
             config_dict["user_phone"] = txt_user_phone.get().strip()
@@ -448,6 +463,8 @@ def btn_save_act(language_code, slience_mode=False):
     if is_all_data_correct:
         if txt_user_email.get().strip()=="":
             is_all_data_correct = False
+            tabControl.select(0)
+            txt_user_email.focus_set()
             messagebox.showerror("Error", "Please enter user email")
         else:
             config_dict["user_email"] = txt_user_email.get().strip()
@@ -457,6 +474,7 @@ def btn_save_act(language_code, slience_mode=False):
         config_dict["book_now_time_alt"] = format_time_string(config_dict["book_now_time_alt"])
 
         config_dict["user_gender"] = combo_user_gender.get().strip()
+        config_dict["booking_occasion"] = combo_booking_occasion.get().strip()
 
         config_dict["cardholder_name"] = txt_cardholder_name.get().strip()
         config_dict["cardholder_email"] = txt_cardholder_email.get().strip()
@@ -577,6 +595,8 @@ def applyNewLanguage():
     global lbl_user_gender
     global lbl_user_phone
     global lbl_user_email
+    global lbl_booking_occasion
+
     global lbl_credit_card_holder
     global lbl_cardholder_name
     global lbl_cardholder_email
@@ -615,6 +635,8 @@ def applyNewLanguage():
     lbl_user_gender.config(text=translate[language_code]["user_gender"])
     lbl_user_phone.config(text=translate[language_code]["user_tel"])
     lbl_user_email.config(text=translate[language_code]["user_email"])
+    lbl_booking_occasion.config(text=translate[language_code]["booking_occasion"])
+
     lbl_credit_card_holder.config(text=translate[language_code]["credit_card_holder"])
     lbl_cardholder_name.config(text=translate[language_code]["cardholder_name"])
     lbl_cardholder_email.config(text=translate[language_code]["cardholder_email"])
@@ -678,22 +700,14 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     homepage_list = (CONST_HOMEPAGE_DEFAULT)
     gender_list = (CONST_GENDER_DEFAULT, '先生')
-
-    adult_picker = ""
-    force_adult_picker = False
-    book_now_time = ""
-    book_now_time_alt = ""
-
-    user_name = ""
-    user_gender = ""
-    user_phone = ""
-    user_email = ""
-
-    cardholder_name=""
-    cardholder_email = ""
-    cc_number = ""
-    cc_exp = ""
-    cc_ccv = ""
+    occasion_list = [
+        '慶生',
+        '約會',
+        '週年慶',
+        '家庭用餐',
+        '朋友聚餐',
+        '商務聚餐'
+    ]
 
     # output config:
     print("config:", config_dict)
@@ -848,6 +862,18 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     txt_user_email.grid(column=1, row=user_profile_row_count, sticky = W)
 
     user_profile_row_count+=1
+
+    # User Gender
+    global lbl_booking_occasion
+    lbl_booking_occasion = Label(frame_user_profile, text=translate[language_code]["booking_occasion"])
+    lbl_booking_occasion.grid(column=0, row=user_profile_row_count, sticky = E)
+
+    global combo_booking_occasion
+    combo_booking_occasion = ttk.Combobox(frame_user_profile, state="readonly")
+    combo_booking_occasion['values']= occasion_list
+    combo_booking_occasion.set(config_dict["booking_occasion"])
+    # PS: nothing need to do when on change event at this time.
+    combo_booking_occasion.grid(column=1, row=user_profile_row_count, sticky = W)
 
     # add second block to UI.
     frame_user_profile.grid(column=0, row=row_count, sticky = W, padx=UI_PADDING_X)
@@ -1224,8 +1250,8 @@ def main():
 
     load_GUI(root, config_dict)
 
-    GUI_SIZE_WIDTH = 460
-    GUI_SIZE_HEIGHT = 560
+    GUI_SIZE_WIDTH = 480
+    GUI_SIZE_HEIGHT = 590
 
     GUI_SIZE_MACOS = str(GUI_SIZE_WIDTH) + 'x' + str(GUI_SIZE_HEIGHT)
     GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-60) + 'x' + str(GUI_SIZE_HEIGHT-90)
