@@ -7,10 +7,16 @@ inline 上的知名店家的訂位都訂不到嗎？透過 Max inline 填表單�
 
 # Demo (示範影片)
 
-Max inline 填表單機器人 2023.08.01
+Max inline 填表單機器人 2023.08.01 自動填入訂位人與信用卡資料 (Windows)
+
+https://youtu.be/3AGarBWVtl8
+
+Max inline 填表單機器人 2023.08.01 (macOS)
+
 https://youtu.be/lQ8R4dTw7iE
 
 Max inline 填表單機器人 2022.09.20
+
 https://youtu.be/uO2OdnL22Sk
 
 # How to use (如何使用)
