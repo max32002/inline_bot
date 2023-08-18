@@ -22,7 +22,7 @@ import threading
 import subprocess
 import json
 
-CONST_APP_VERSION = "MaxinlineBot (2023.08.01)"
+CONST_APP_VERSION = "Max inline Bot (2023.08.01)"
 
 CONST_MAXBOT_CONFIG_FILE = "settings.json"
 CONST_MAXBOT_LAST_URL_FILE = "MAXBOT_LAST_URL.txt"
@@ -1254,7 +1254,7 @@ def main():
     GUI_SIZE_HEIGHT = 590
 
     GUI_SIZE_MACOS = str(GUI_SIZE_WIDTH) + 'x' + str(GUI_SIZE_HEIGHT)
-    GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-60) + 'x' + str(GUI_SIZE_HEIGHT-90)
+    GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-90) + 'x' + str(GUI_SIZE_HEIGHT-120)
 
     GUI_SIZE =GUI_SIZE_MACOS
 
