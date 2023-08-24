@@ -6,6 +6,9 @@ inline 上的知名店家的訂位都訂不到嗎？透過 Max inline 填表單�
 如果是在公用的電腦，建議不要填入自己所有的信用卡資料，以避免個人的資料遭其他共用電腦的使用者被盜用。
 
 # Demo (示範影片)
+Max inline 填表單機器人 2023.08.21 自動填入其他備註欄位 (Windows)
+
+https://youtu.be/w_bCvuSrquQ
 
 Max inline 填表單機器人 2023.08.01 自動填入訂位人與信用卡資料 (Windows)
 
