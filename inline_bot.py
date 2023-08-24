@@ -39,7 +39,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 import argparse
 import chromedriver_autoinstaller
 
-CONST_APP_VERSION = "Max inline Bot (2023.08.01)"
+CONST_APP_VERSION = "Max inline Bot (2023.08.21)"
 
 CONST_MAXBOT_CONFIG_FILE = 'settings.json'
 CONST_MAXBOT_LAST_URL_FILE = "MAXBOT_LAST_URL.txt"
@@ -128,7 +128,6 @@ def get_favoriate_extension_path(webdriver_path):
     extension_list.append(os.path.join(webdriver_path,"Buster_2.0.1.0.crx"))
     extension_list.append(os.path.join(webdriver_path,"no_google_analytics_1.1.0.0.crx"))
     extension_list.append(os.path.join(webdriver_path,"proxy-switchyomega_2.5.21.0.crx"))
-    extension_list.append(os.path.join(webdriver_path,"tampermonkey_4.19.0.0.crx"))
     return extension_list
 
 def get_chromedriver_path(webdriver_path):
@@ -865,26 +864,21 @@ def fill_personal_info(driver, config_dict):
         if user_gender == "小姐":
             ret = click_radio(el_form, By.ID, 'gender-female')
 
-        user_name = config_dict["user_name"]
-        user_phone = config_dict["user_phone"]
-        user_email = config_dict["user_email"]
-        ret = fill_text_by_default(el_form, By.ID, 'name', user_name)
-        ret = fill_text_by_default(el_form, By.ID, 'phone', user_phone)
-        ret = fill_text_by_default(el_form, By.ID, 'email', user_email)
+        ret = fill_text_by_default(el_form, By.ID, 'name', config_dict["user_name"])
+        ret = fill_text_by_default(el_form, By.ID, 'phone', config_dict["user_phone"])
+        ret = fill_text_by_default(el_form, By.ID, 'email', config_dict["user_email"])
         
         if(len(config_dict["booking_occasion"]) > 0):
             my_css_selector = 'div[value="'+ config_dict["booking_occasion"] +'"][aria-checked="false"]'
             is_occasion_clicked = force_press_button(driver, By.CSS_SELECTOR, my_css_selector)
+
+        ret = fill_text_by_default(el_form, By.CSS_SELECTOR, 'textarea', config_dict["booking_note"])
         
         cardholder_name = config_dict["cardholder_name"]
         cardholder_email = config_dict["cardholder_email"]
         ret = fill_text_by_default(el_form, By.ID, 'cardholder-name', cardholder_name)
         ret = fill_text_by_default(el_form, By.ID, 'cardholder-email', cardholder_email)
 
-        cc_number = config_dict["cc_number"]
-        cc_exp = config_dict["cc_exp"]
-        cc_ccv = config_dict["cc_ccv"]
-        
         iframes = None
         try:
             iframes = el_form.find_elements(By.TAG_NAME, "iframe")
@@ -916,19 +910,19 @@ def fill_personal_info(driver, config_dict):
             if "card-number" in iframe_url:
                 if not cc_check[0]:
                     #print('check cc-number at loop(%d)...' % (idx_iframe))
-                    ret = fill_text_by_default(driver, By.ID, 'cc-number', cc_number)
+                    ret = fill_text_by_default(driver, By.ID, 'cc-number', config_dict["cc_number"])
                     cc_check[0]=ret
                     #print("cc-number ret:", ret)
             if "expiration-date" in iframe_url:
                 if not cc_check[1]:
                     #print('check cc-exp at loop(%d)...' % (idx_iframe))
-                    ret = fill_text_by_default(driver, By.ID, 'cc-exp', cc_exp)
+                    ret = fill_text_by_default(driver, By.ID, 'cc-exp', config_dict["cc_exp"])
                     cc_check[1]=ret
                     #print("cc-exp ret:", ret)
             if "ccv" in iframe_url:
                 if not cc_check[2]:
                     #print('check cc-ccv at loop(%d)...' % (idx_iframe))
-                    ret = fill_text_by_default(driver, By.ID, 'cc-ccv', cc_ccv)
+                    ret = fill_text_by_default(driver, By.ID, 'cc-ccv', config_dict["cc_ccv"])
                     cc_check[2]=ret
                     #print("cc-ccv ret:", ret)
             try:
