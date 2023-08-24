@@ -22,7 +22,7 @@ import threading
 import subprocess
 import json
 
-CONST_APP_VERSION = "Max inline Bot (2023.08.01)"
+CONST_APP_VERSION = "Max inline Bot (2023.08.21)"
 
 CONST_MAXBOT_CONFIG_FILE = "settings.json"
 CONST_MAXBOT_LAST_URL_FILE = "MAXBOT_LAST_URL.txt"
@@ -62,6 +62,7 @@ def load_translate():
     en_us["user_tel"] = "Tel"
     en_us["user_email"] = "Email"
     en_us["booking_occasion"] = "Occasion"
+    en_us["booking_note"] = "Note"
     
     en_us["credit_card_holder"] = "Credit Card Holder"
     en_us["cardholder_name"] = "Name"
@@ -116,6 +117,7 @@ def load_translate():
     zh_tw["user_tel"] = "訂位人手機號碼"
     zh_tw["user_email"] = "訂位人Email"
     zh_tw["booking_occasion"] = "用餐目的"
+    zh_tw["booking_note"] = "其他備註"
     
     zh_tw["credit_card_holder"] = "信用卡持有人"
     zh_tw["cardholder_name"] = "持卡人姓名"
@@ -170,6 +172,7 @@ def load_translate():
     zh_cn["user_tel"] = "订位人手机号码"
     zh_cn["user_email"] = "订位人Email"
     zh_cn["booking_occasion"] = "用餐目的"
+    zh_cn["booking_note"] = "其他備註"
 
     zh_cn["credit_card_holder"] = "信用卡持有人"
     zh_cn["cardholder_name"] = "持卡人姓名"
@@ -219,11 +222,12 @@ def load_translate():
     ja_jp["booking_time_alt"] = "食事時間 (代替)"
     
     ja_jp["user_info"] = "連絡先情報"
-    ja_jp["user_name"] = "予約者名"
+    ja_jp["user_name"] = "予約者氏名"
     ja_jp["user_gender"] = "性別"
     ja_jp["user_tel"] = "携帯電話番号"
-    ja_jp["user_email"] = "予約担当者Email"
-    ja_jp["booking_occasion"] = "機会"
+    ja_jp["user_email"] = "メールアドレス"
+    ja_jp["booking_occasion"] = "ご利用目的"
+    ja_jp["booking_note"] = "その他ご希望"
 
     ja_jp["credit_card_holder"] = "クレジット カード所有者"
     ja_jp["cardholder_name"] = "所有者名"
@@ -291,6 +295,7 @@ def get_default_config():
     config_dict["user_phone"] = ""
     config_dict["user_email"] = ""
     config_dict["booking_occasion"] = CONST_OCCASION_DEFAULT
+    config_dict["booking_note"] = ""
 
     config_dict["cardholder_name"] = ""
     config_dict["cardholder_email"] = ""
@@ -384,6 +389,7 @@ def btn_save_act(language_code, slience_mode=False):
     global txt_user_phone
     global txt_user_email
     global combo_booking_occasion
+    global txt_booking_note
 
     global txt_cardholder_name
     global txt_cardholder_email
@@ -475,6 +481,7 @@ def btn_save_act(language_code, slience_mode=False):
 
         config_dict["user_gender"] = combo_user_gender.get().strip()
         config_dict["booking_occasion"] = combo_booking_occasion.get().strip()
+        config_dict["booking_note"] = txt_booking_note.get().strip()
 
         config_dict["cardholder_name"] = txt_cardholder_name.get().strip()
         config_dict["cardholder_email"] = txt_cardholder_email.get().strip()
@@ -596,6 +603,7 @@ def applyNewLanguage():
     global lbl_user_phone
     global lbl_user_email
     global lbl_booking_occasion
+    global lbl_booking_note
 
     global lbl_credit_card_holder
     global lbl_cardholder_name
@@ -636,6 +644,7 @@ def applyNewLanguage():
     lbl_user_phone.config(text=translate[language_code]["user_tel"])
     lbl_user_email.config(text=translate[language_code]["user_email"])
     lbl_booking_occasion.config(text=translate[language_code]["booking_occasion"])
+    lbl_booking_note.config(text=translate[language_code]["booking_note"])
 
     lbl_credit_card_holder.config(text=translate[language_code]["credit_card_holder"])
     lbl_cardholder_name.config(text=translate[language_code]["cardholder_name"])
@@ -874,6 +883,18 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     combo_booking_occasion.set(config_dict["booking_occasion"])
     # PS: nothing need to do when on change event at this time.
     combo_booking_occasion.grid(column=1, row=user_profile_row_count, sticky = W)
+
+    user_profile_row_count+=1
+
+    # User Email
+    global lbl_booking_note
+    lbl_booking_note = Label(frame_user_profile, text=translate[language_code]["booking_note"])
+    lbl_booking_note.grid(column=0, row=user_profile_row_count, sticky = E)
+
+    global txt_booking_note
+    txt_booking_note_value = StringVar(frame_user_profile, value=config_dict["booking_note"])
+    txt_booking_note = Entry(frame_user_profile, width=30, textvariable = txt_booking_note_value)
+    txt_booking_note.grid(column=1, row=user_profile_row_count, sticky = W)
 
     # add second block to UI.
     frame_user_profile.grid(column=0, row=row_count, sticky = W, padx=UI_PADDING_X)
@@ -1251,10 +1272,10 @@ def main():
     load_GUI(root, config_dict)
 
     GUI_SIZE_WIDTH = 480
-    GUI_SIZE_HEIGHT = 590
+    GUI_SIZE_HEIGHT = 610
 
     GUI_SIZE_MACOS = str(GUI_SIZE_WIDTH) + 'x' + str(GUI_SIZE_HEIGHT)
-    GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-90) + 'x' + str(GUI_SIZE_HEIGHT-120)
+    GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-80) + 'x' + str(GUI_SIZE_HEIGHT-120)
 
     GUI_SIZE =GUI_SIZE_MACOS
 
